@@ -7,11 +7,18 @@ namespace SpellFactionItemDistributor
 	{
 		static void AddForms(TESObjectREFR* a_ref, TESForm* formToAdd, UInt32 amount) {
 			if (formToAdd) {
-				TESNPC* npc = npc = dynamic_cast<TESNPC*>(a_ref);
+				Manager* manager = Manager::GetSingleton();
+				manager->AddToCache(a_ref->refID);
+				std::string formString = std::to_string(a_ref->refID) + "\n";
+				std::fstream idCache;
+				idCache.open("SFIDCache.txt", std::ios::app);
+				idCache.write(formString.c_str(), formString.size());
+				idCache.close();
+				TESNPC* npc = dynamic_cast<TESNPC*>(a_ref);
 				switch (formToAdd->GetFormType())
 				{
 				case (FormType::kFormType_Misc):
-					a_ref->AddItem(formToAdd, &a_ref->baseExtraList, amount);
+					a_ref->AddItem(formToAdd, nullptr, amount);
 					break;
 				case (FormType::kFormType_AlchemyItem):
 					a_ref->AddItem(formToAdd, &a_ref->baseExtraList, amount);
@@ -70,26 +77,44 @@ namespace SpellFactionItemDistributor
 
 		static void __fastcall LinkFormHook(TESObjectREFR* a_ref, void* edx)
 		{
+			_MESSAGE("BEGIN");
+			bool skip = false;
 			if (const auto base = a_ref->baseForm) {
 				Manager* manager = Manager::GetSingleton();
 				manager->LoadFormsOnce();
+				_MESSAGE("\tforms loaded");
 				const auto& [ref, sfidResult ] = manager->GetSwapData(a_ref, base);
+				_MESSAGE("\treceived swap data");
+				if (!ref || sfidResult.traits.amount == 0) {
+					_MESSAGE("\t\tNO REF");
+					skip = true;
+				}
+				_MESSAGE("\t calculating chance");
 				auto seededRNG = SeedRNG(static_cast<std::uint32_t>(a_ref->refID));
-				if (sfidResult.traits.chance != 100) {
+				if (sfidResult.traits.chance != 100 && !skip) {
 					const auto rng = sfidResult.traits.trueRandom ? SeedRNG().Generate<std::uint32_t>(0, 100) :
 						seededRNG.Generate<std::uint32_t>(0, 100);
 					if (rng > sfidResult.traits.chance) {
-						return;
+						skip = true;
 					}
 				}
-				if (std::holds_alternative<UInt32>(sfidResult.formToAdd)) {
-					_MESSAGE("single");
+				_MESSAGE("\t calculated chance");
+				if (skip) {
+					_MESSAGE("skip is true");
+				}
+				if (!skip && std::holds_alternative<UInt32>(sfidResult.formToAdd)) {
+					_MESSAGE("\tsingle");
 					const auto formToAdd = std::get<UInt32>(sfidResult.formToAdd);
+					if (formToAdd == 0) {
+						_MESSAGE("\t\tNO FORM");
+						skip = true;
+					}
 					auto form = LookupFormByID(formToAdd);
+					_MESSAGE("\t\tadding %u %u to %u", sfidResult.traits.amount, formToAdd, a_ref->refID);
 					AddForms(a_ref, form, sfidResult.traits.amount);
 				}
-				else if (std::holds_alternative<std::unordered_set<UInt32>>(sfidResult.formToAdd)) {
-					_MESSAGE("set");
+				else if (!skip && std::holds_alternative<std::unordered_set<UInt32>>(sfidResult.formToAdd)) {
+					_MESSAGE("\tset");
 					const auto& set = std::get<std::unordered_set<UInt32>>(sfidResult.formToAdd);
 					for (const auto& form : set) {
 						TESForm* newForm = LookupFormByID(form);
@@ -99,6 +124,7 @@ namespace SpellFactionItemDistributor
 					}
 				}
 			}
+			_MESSAGE("calling original address");
 			ThisStdCall(originalAddress, a_ref);
 		}
 		static inline std::uint32_t originalAddress;
@@ -123,7 +149,7 @@ namespace SpellFactionItemDistributor
 
 		static void Install()
 		{
-			originalAddress = DetourVtable(0xA71160, reinterpret_cast<UInt32>(LinkFormHook)); // kVtbl_Creature_LinkForm
+			originalAddress = DetourVtable(0xA6FDF0, reinterpret_cast<UInt32>(LinkFormHook)); // kVtbl_Creature_LinkForm
 			_MESSAGE("Installed Creature vtable hook");
 		}
 	};

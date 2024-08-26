@@ -24,7 +24,12 @@ void MessageHandler(OBSEMessagingInterface::Message* msg)
 {
 	switch (msg->type)
 	{
-	case OBSEMessagingInterface::kMessage_GameInitialized: break;
+	case OBSEMessagingInterface::kMessage_PostPostLoad: {
+		SpellFactionItemDistributor::Install();
+	} break;
+	case OBSEMessagingInterface::kMessage_GameInitialized: {
+		SpellFactionItemDistributor::Manager::GetSingleton()->LoadCache();
+	} break;
 	default: break;
 	}
 }
@@ -88,7 +93,6 @@ bool OBSEPlugin_Load(OBSEInterface* OBSE)
 		g_consoleInterface = static_cast<OBSEConsoleInterface*>(OBSE->QueryInterface(kInterface_Console));
 #endif
 	}
-	SpellFactionItemDistributor::Install();
 
 	return true;
 }

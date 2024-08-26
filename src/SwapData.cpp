@@ -107,6 +107,11 @@ namespace SpellFactionItemDistributor
 		}
 	}
 
+	SwapData::SwapData()
+	{
+		formIDSet = static_cast<std::uint32_t>(0);
+	}
+
 	SwapData::SwapData(FormIDOrSet a_id, const Input& a_input, FormIDOrSet a_baseId) :
 		formIDSet(std::move(a_id)),
 		TransformData(a_input),
@@ -115,6 +120,10 @@ namespace SpellFactionItemDistributor
 
 	std::uint32_t TransformData::GetFormID(const std::string& a_str)
 	{
+		if (a_str == "ALL") {
+			return 0xFFFFFFFF;
+		}
+
 		constexpr auto lookup_formID = [](std::uint32_t a_refID, const std::string& modName) -> std::uint32_t
 			{
 				const auto modIdx = (*g_dataHandler)->GetModIndex(modName.c_str());
@@ -194,11 +203,9 @@ namespace SpellFactionItemDistributor
 	{
 
 		if (const auto formID = std::get_if<UInt32>(&formIDSet); formID) {
-			_MESSAGE("GetSwapBase returning false");
 			return true;
 		}
 		else {
-			_MESSAGE("GetSwapBase returning false");
 			return false;
 
 			// return random element from set
@@ -211,6 +218,37 @@ namespace SpellFactionItemDistributor
 
 			return static_cast<TESObjectREFR*>(LookupFormByID(*std::next(set.begin(), randIt)));
 			*/
+		}
+	}
+
+	void SwapData::GetFormsAll(const std::string& a_path, const std::string& a_str, std::function<void(std::uint32_t, SwapData&)> a_func)
+	{
+		constexpr auto swap_empty = [](const FormIDOrSet& a_set) {
+			if (const auto formID = std::get_if<UInt32>(&a_set); formID) {
+				return *formID == 0;
+			}
+			else {
+				return std::get<FormIDSet>(a_set).empty();
+			}
+			};
+
+		const auto formPair = string::split(a_str, "|");
+		
+		if (formPair[0] == "ALL") {
+			UInt32 baseFormID;
+			if (const auto swapFormID = GetSwapFormID(formPair[1]); !swap_empty(swapFormID)) {
+
+				const Input input(
+					swapFormID, // items
+					formPair.size() > 2 ? formPair[2] : std::string{},  // traits
+					a_str,
+					a_path);
+				SwapData swapData(swapFormID, input, baseFormID);
+				a_func(baseFormID, swapData);
+			}
+			else {
+				_ERROR("\t\t\tfailed to process %s (SWAP formID not found)", a_str.c_str());
+			}
 		}
 	}
 
@@ -241,8 +279,8 @@ namespace SpellFactionItemDistributor
 				_ERROR("\t\t\tfailed to process %s (SWAP formID not found)", a_str.c_str());
 			}
 		}
-		else {
-			_MESSAGE("\t\t\tfailed to process %s (BASE formID not found, applying to ALL)", a_str.c_str());
+		else if (formPair[0] == "ALL") {
+			const auto baseFormID = GetFormID(formPair[0]);
 			if (const auto swapFormID = GetSwapFormID(formPair[1]); !swap_empty(swapFormID)) {
 				const Input input(
 					swapFormID, // items
@@ -255,6 +293,9 @@ namespace SpellFactionItemDistributor
 			else {
 				_ERROR("\t\t\tfailed to process %s (SWAP formID not found)", a_str.c_str());
 			}
+		}
+		else {
+			_ERROR("\t\t\tfailed to process %s (BASE formID not found)", a_str.c_str());
 		}
 	}
 }

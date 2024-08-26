@@ -94,11 +94,13 @@ namespace SpellFactionItemDistributor
 	class SwapData : public TransformData
 	{
 	public:
-		SwapData() = default;
+		SwapData();
 		SwapData(FormIDOrSet a_id, const Input& a_input, FormIDOrSet a_baseId);
 
 		[[nodiscard]] static FormIDOrSet GetSwapFormID(const std::string& a_str);
 		bool GetSwapBase(const TESObjectREFR* a_ref) const;
+
+		static void GetFormsAll(const std::string& a_path, const std::string& a_str, std::function<void(std::uint32_t, SwapData&)> a_func);
 
 		static void GetForms(const std::string& a_path, const std::string& a_str, std::function<void(std::uint32_t, SwapData&)> a_func);
 

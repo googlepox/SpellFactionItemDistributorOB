@@ -1,6 +1,8 @@
 #pragma once
 
 #include "SwapData.h"
+#include "ArrayVar.h"
+#include "Defs.h"
 
 namespace SpellFactionItemDistributor
 {
@@ -44,13 +46,13 @@ namespace SpellFactionItemDistributor
 		void            PrintConflicts() const;
 		SFIDResult      GetSwapData(TESObjectREFR* a_ref, TESForm* a_base);
 		SFIDResult      GetConditionalBase(TESObjectREFR* a_ref, TESForm* a_base, FormMap<SwapDataConditional> conditionalForms);
-		SFIDResult GetSpellData(TESObjectREFR* a_ref, TESForm* a_base);
-		SFIDResult GetFactionData(TESObjectREFR* a_ref, TESForm* a_base);
-		SFIDResult GetEquippableData(TESObjectREFR* a_ref, TESForm* a_base);
-		SFIDResult GetItemData(TESObjectREFR* a_ref, TESForm* a_base);
 
 		void InsertLeveledItemRef(const TESObjectREFR* a_refr);
 		bool IsLeveledItemRefSwapped(const TESObjectREFR* a_refr) const;
+
+		void LoadCache();
+		void AddToCache(UInt32 formID);
+		std::unordered_set<UInt32>     processedForms;
 
 	private:
 		Manager() = default;
@@ -67,17 +69,14 @@ namespace SpellFactionItemDistributor
 		static void           get_forms(const std::string& a_path, const std::string& a_str, FormMap<SwapDataVec>& a_map);
 		void                  get_forms(const std::string& a_path, const std::string& a_str, const std::vector<FormIDStr>& a_conditionalIDs);
 
+		void get_forms_all(const std::string& a_path, const std::string& a_str, const std::vector<FormIDStr>& applyToAllForms);
+
 		// members
 		FormMap<SwapDataVec>         allForms{};
 		FormMap<SwapDataConditional> allFormsConditional{};
-		FormMap<SwapDataVec>         spellForms{};
-		FormMap<SwapDataConditional> spellFormsConditional{};
-		FormMap<SwapDataVec>         factionForms{};
-		FormMap<SwapDataConditional> factionFormsConditional{};
-		FormMap<SwapDataVec>         equippableForms{};
-		FormMap<SwapDataConditional> equippableFormsConditional{};
-		FormMap<SwapDataVec>         itemForms{};
-		FormMap<SwapDataConditional> itemFormsConditional{};
+		FormMap<SwapDataConditional> applyToAllForms{};
+		FormIDSet applyToAllFormsSet{};
+
 
 
 		std::unordered_set<std::uint32_t> swappedLeveledItemRefs{};

@@ -1,4 +1,5 @@
 #include "Manager.h"
+#include "fstream"
 
 extern OBSEScriptInterface* g_script;
 
@@ -28,22 +29,6 @@ namespace SpellFactionItemDistributor
 			return allForms;
 			break;
 		}
-		case (spell): {
-			return spellForms;
-			break;
-		}
-		case (faction): {
-			return factionForms;
-			break;
-		}
-		case (equippable): {
-			return equippableForms;
-			break;
-		}
-		case (item): {
-			return itemForms;
-			break;
-		}
 		default:
 			return allForms;
 			break;
@@ -66,7 +51,16 @@ namespace SpellFactionItemDistributor
 			});
 	}
 
-	bool HasKeyword(TESObjectCELL* a_cell, const std::string& a_keyword)
+	void Manager::get_forms_all(const std::string& a_path, const std::string& a_str, const std::vector<FormIDStr>& a_conditionalIDs)
+	{
+		return SwapData::GetForms(a_path, a_str, [&](const UInt32 a_baseID, const SwapData& a_SwapData) {
+			for (auto& id : a_conditionalIDs) {
+				applyToAllForms[a_baseID][id].push_back(a_SwapData);
+			}
+			});
+	}
+
+	static bool HasKeywordCell(TESObjectCELL* a_cell, const std::string& a_keyword)
 	{
 		if (a_cell) {
 			std::string editorID = (a_cell->GetEditorID2());
@@ -88,7 +82,6 @@ namespace SpellFactionItemDistributor
 
 	bool ConditionalInput::IsValid(const FormIDStr& a_data) const
 	{
-		_MESSAGE("checking validity");
 		if (std::holds_alternative<UInt32>(a_data)) {
 			if (const auto form = LookupFormByID(std::get<UInt32>(a_data))) {
 				switch (form->GetFormType()) {
@@ -130,8 +123,7 @@ namespace SpellFactionItemDistributor
 			}
 		}
 		else {
-			_MESSAGE("checking keyword");
-			return HasKeyword(currentCell, std::get<std::string>(a_data));
+			return HasKeywordCell(currentCell, std::get<std::string>(a_data));
 		}
 		return false;
 	}
@@ -209,7 +201,12 @@ namespace SpellFactionItemDistributor
 					if (!values.empty()) {
 						_MESSAGE("\t\t\t%u Items found", values.size());
 						for (const auto& key : values) {
-							get_forms(path, key.pItem, processedConditions);
+							if (string::icontains(key.pItem, "ALL")) {
+								get_forms_all(path, key.pItem, processedConditions);
+							}
+							else {
+								get_forms(path, key.pItem, processedConditions);
+							}
 						}
 					}
 				}
@@ -285,6 +282,27 @@ namespace SpellFactionItemDistributor
 	{
 		SwapData empty;
 
+		if (!a_base) {
+			if (!a_ref) {
+				return { nullptr, empty };;
+			}
+			if (const auto it = conditionalForms.find(static_cast<std::uint32_t>(0xFFFFFFFF)); it != conditionalForms.end()) {;
+				const ConditionalInput input(a_ref, a_base);
+				const auto             result = std::ranges::find_if(it->second, [&](const auto& a_data) {
+					return input.IsValid(a_data.first);
+					});
+
+				if (result != it->second.end()) {
+					for (SwapData SwapData : result->second | std::ranges::views::reverse) {
+						return { a_ref, SwapData };
+					}
+				}
+				else {
+					return { nullptr, empty };
+				}
+			}
+		}
+
 		if (const auto it = conditionalForms.find(static_cast<std::uint32_t>(a_base->refID)); it != conditionalForms.end()) {
 			const ConditionalInput input(a_ref, a_base);
 			const auto             result = std::ranges::find_if(it->second, [&](const auto& a_data) {
@@ -298,7 +316,7 @@ namespace SpellFactionItemDistributor
 			}
 		}
 
-		return { a_ref, empty };
+		return { nullptr, empty };
 	}
 
 	void Manager::InsertLeveledItemRef(const TESObjectREFR* a_refr)
@@ -311,17 +329,38 @@ namespace SpellFactionItemDistributor
 		return swappedLeveledItemRefs.contains(a_refr->refID);
 	}
 
+	void Manager::LoadCache() {
+		std::string formLine;
+		std::ifstream idCache;
+		_MESSAGE("opening cache");
+		idCache.open("SFIDCache.txt");
+		while (std::getline(idCache, formLine)) {
+			_MESSAGE("loaded line %s", formLine.c_str());
+			processedForms.emplace(atoi(formLine.c_str()));
+		}
+		idCache.close();
+	}
+
+	void Manager::AddToCache(UInt32 formID)
+	{
+		processedForms.emplace(formID);
+	}
+
 	SFIDResult Manager::GetSwapData(TESObjectREFR* a_ref, TESForm* a_base)
 	{
 		SwapData empty;
 
 		const auto get_swap_base = [a_ref](const TESForm* a_form, const FormMap<SwapDataVec>& a_map) -> SFIDResult {
 			if (const auto it = a_map.find(a_form->refID); it != a_map.end()) {
+				_MESSAGE("first if");
 				for (SwapData swapData : it->second | std::ranges::views::reverse) {
-					if (swapData.GetSwapBase(a_ref)) {
+					_MESSAGE("looping");
+					if (!swapData.GetSwapBase(a_ref)) {
+						_MESSAGE("loop is");
 						return { a_ref, swapData };
 					}
 					else {
+						_MESSAGE("loop else");
 						return { a_ref, swapData };
 					}
 				}
@@ -338,10 +377,28 @@ namespace SpellFactionItemDistributor
 		}
 
 		if (!SFIDResult.first) {
-			_MESSAGE("not swapData.first");
+			_MESSAGE("no first 1");
 			SFIDResult = GetConditionalBase(a_ref, a_base, allFormsConditional);
 		}
+		
+		if (!SFIDResult.first) {
+			_MESSAGE("no first 2");
+			SFIDResult = GetConditionalBase(a_ref, nullptr, applyToAllForms);
+		}
 
-		return SFIDResult;
+		if (!SFIDResult.first) {
+			_MESSAGE("no first 3");
+			SFIDResult = GetConditionalBase(nullptr, nullptr, applyToAllForms);
+		}
+
+		
+		if (const auto it = processedForms.find(a_ref->refID); it == processedForms.end()) {
+			_MESSAGE("not found");
+			return GetConditionalBase(a_ref, nullptr, applyToAllForms);
+		}
+		else {
+			_MESSAGE("found");
+			return { nullptr, empty };
+		}
 	}
 }
