@@ -14,7 +14,12 @@ namespace SpellFactionItemDistributor
 				idCache.open("SFIDCache.txt", std::ios::app);
 				idCache.write(formString.c_str(), formString.size());
 				idCache.close();
+				short itr;
 				TESNPC* npc = dynamic_cast<TESNPC*>(a_ref);
+				TESFaction* fact;
+				TESActorBaseData::FactionListEntry* entry;
+				TESLeveledList* lev;
+				TESForm* newForm;
 				switch (formToAdd->GetFormType())
 				{
 				case (FormType::kFormType_Misc):
@@ -39,7 +44,15 @@ namespace SpellFactionItemDistributor
 					a_ref->AddItem(formToAdd, &a_ref->baseExtraList, amount);
 					break;
 				case (FormType::kFormType_LeveledItem):
-					a_ref->AddItem(formToAdd, &a_ref->baseExtraList, amount);
+					lev = dynamic_cast<TESLeveledList*>(formToAdd);
+					itr = amount;
+					while (itr > 0) {
+						newForm = lev->CalcElement(1, true, 5);
+						if (newForm) {
+							a_ref->AddItem(newForm, nullptr, 1);
+						}
+						itr = itr - 1;
+					}
 					break;
 				case (FormType::kFormType_Armor):
 					a_ref->AddItem(formToAdd, &a_ref->baseExtraList, amount);
@@ -64,10 +77,21 @@ namespace SpellFactionItemDistributor
 					ThisStdCall(0x46F350, &npc->spellList, formToAdd);
 					break;
 				case (FormType::kFormType_Package):
-					ThisStdCall(0x468380, &npc->aiForm, formToAdd);
+					//ThisStdCall(0x468380, &npc->aiForm, formToAdd);
 					break;
 				case (FormType::kFormType_Faction):
-					ThisStdCall(0x4675E, &npc->actorBaseData, formToAdd, 1);
+					/*
+					_MESSAGE("adding to faction");
+					fact = dynamic_cast<TESFaction*>(formToAdd);
+					entry = &npc->actorBaseData.factionList;
+					while (entry && entry->data)
+					{
+						entry = entry->next;
+					}
+					*entry = TESActorBaseData::FactionListEntry();
+					entry->data->faction = fact;
+					entry->data->rank = 1;
+					*/
 					break;
 				default:
 					break;
@@ -77,19 +101,14 @@ namespace SpellFactionItemDistributor
 
 		static void __fastcall LinkFormHook(TESObjectREFR* a_ref, void* edx)
 		{
-			_MESSAGE("BEGIN");
 			bool skip = false;
 			if (const auto base = a_ref->baseForm) {
 				Manager* manager = Manager::GetSingleton();
 				manager->LoadFormsOnce();
-				_MESSAGE("\tforms loaded");
 				const auto& [ref, sfidResult ] = manager->GetSwapData(a_ref, base);
-				_MESSAGE("\treceived swap data");
 				if (!ref || sfidResult.traits.amount == 0) {
-					_MESSAGE("\t\tNO REF");
 					skip = true;
 				}
-				_MESSAGE("\t calculating chance");
 				auto seededRNG = SeedRNG(static_cast<std::uint32_t>(a_ref->refID));
 				if (sfidResult.traits.chance != 100 && !skip) {
 					const auto rng = sfidResult.traits.trueRandom ? SeedRNG().Generate<std::uint32_t>(0, 100) :
@@ -98,23 +117,16 @@ namespace SpellFactionItemDistributor
 						skip = true;
 					}
 				}
-				_MESSAGE("\t calculated chance");
-				if (skip) {
-					_MESSAGE("skip is true");
-				}
 				if (!skip && std::holds_alternative<UInt32>(sfidResult.formToAdd)) {
-					_MESSAGE("\tsingle");
 					const auto formToAdd = std::get<UInt32>(sfidResult.formToAdd);
 					if (formToAdd == 0) {
-						_MESSAGE("\t\tNO FORM");
 						skip = true;
 					}
 					auto form = LookupFormByID(formToAdd);
-					_MESSAGE("\t\tadding %u %u to %u", sfidResult.traits.amount, formToAdd, a_ref->refID);
+					//_MESSAGE("\t\tadding %u %u to %u", sfidResult.traits.amount, formToAdd, a_ref->refID);
 					AddForms(a_ref, form, sfidResult.traits.amount);
 				}
 				else if (!skip && std::holds_alternative<std::unordered_set<UInt32>>(sfidResult.formToAdd)) {
-					_MESSAGE("\tset");
 					const auto& set = std::get<std::unordered_set<UInt32>>(sfidResult.formToAdd);
 					for (const auto& form : set) {
 						TESForm* newForm = LookupFormByID(form);
@@ -124,7 +136,6 @@ namespace SpellFactionItemDistributor
 					}
 				}
 			}
-			_MESSAGE("calling original address");
 			ThisStdCall(originalAddress, a_ref);
 		}
 		static inline std::uint32_t originalAddress;

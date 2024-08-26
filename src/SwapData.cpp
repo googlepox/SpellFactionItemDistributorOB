@@ -123,7 +123,6 @@ namespace SpellFactionItemDistributor
 		if (a_str == "ALL") {
 			return 0xFFFFFFFF;
 		}
-
 		constexpr auto lookup_formID = [](std::uint32_t a_refID, const std::string& modName) -> std::uint32_t
 			{
 				const auto modIdx = (*g_dataHandler)->GetModIndex(modName.c_str());

@@ -82,7 +82,6 @@ namespace SpellFactionItemDistributor
 
 	bool ConditionalInput::IsValid(const FormIDStr& a_data) const
 	{
-		_MESSAGE("is valid?");
 		if (std::holds_alternative<UInt32>(a_data)) {
 			if (const auto form = LookupFormByID(std::get<UInt32>(a_data))) {
 				switch (form->GetFormType()) {
@@ -293,7 +292,6 @@ namespace SpellFactionItemDistributor
 					return input.IsValid(a_data.first);
 					});
 
-				_MESSAGE("GetConditionalBase first if");
 				if (result != it->second.end()) {
 					for (SwapData SwapData : result->second | std::ranges::views::reverse) {
 						return { a_ref, SwapData };
@@ -304,20 +302,14 @@ namespace SpellFactionItemDistributor
 				}
 			}
 			else if (const auto it = allForms.find(static_cast<std::uint32_t>(0xFFFFFFFF)); it != allForms.end()) {
-				_MESSAGE("first if for all forms");
 				for (SwapData swapData : it->second | std::ranges::views::reverse) {
-					_MESSAGE("looping for all forms");
 					if (!swapData.GetSwapBase(a_ref)) {
-						_MESSAGE("loop is for all forms");
 						return { a_ref, swapData };
 					}
 					else {
-						_MESSAGE("loop else for all forms");
 						return { a_ref, swapData };
 					}
 				}
-				SwapData empty;
-				return { nullptr, empty };
 			}
 		}
 		else if (const auto it = conditionalForms.find(static_cast<std::uint32_t>(a_base->refID)); it != conditionalForms.end()) {
@@ -349,7 +341,7 @@ namespace SpellFactionItemDistributor
 	void Manager::LoadCache() {
 		std::string formLine;
 		std::ifstream idCache;
-		_MESSAGE("opening cache");
+		//_MESSAGE("opening cache");
 		idCache.open("SFIDCache.txt");
 		while (std::getline(idCache, formLine)) {
 			_MESSAGE("loaded line %s", formLine.c_str());
@@ -369,15 +361,11 @@ namespace SpellFactionItemDistributor
 
 		const auto get_swap_base = [a_ref](const TESForm* a_form, const FormMap<SwapDataVec>& a_map) -> SFIDResult {
 			if (const auto it = a_map.find(a_form->refID); it != a_map.end()) {
-				_MESSAGE("first if");
 				for (SwapData swapData : it->second | std::ranges::views::reverse) {
-					_MESSAGE("looping");
 					if (!swapData.GetSwapBase(a_ref)) {
-						_MESSAGE("loop is");
 						return { a_ref, swapData };
 					}
 					else {
-						_MESSAGE("loop else");
 						return { a_ref, swapData };
 					}
 				}
@@ -389,31 +377,26 @@ namespace SpellFactionItemDistributor
 		SFIDResult SFIDResult{ a_ref, empty };
 
 		if (a_ref->refID < 0xFF000000) {
-			_MESSAGE("refID check");
 			SFIDResult = get_swap_base(a_base, allForms);
 		}
 
 		if (!SFIDResult.first) {
-			_MESSAGE("no first 1");
 			SFIDResult = GetConditionalBase(a_ref, a_base, allFormsConditional);
 		}
 		
 		if (!SFIDResult.first) {
-			_MESSAGE("no first 2");
 			SFIDResult = GetConditionalBase(a_ref, nullptr, applyToAllForms);
 		}
 
 		if (!SFIDResult.first) {
-			_MESSAGE("no first 3");
 			SFIDResult = GetConditionalBase(nullptr, nullptr, applyToAllForms);
 		}
 		
 		if (const auto it = processedForms.find(a_ref->refID); it == processedForms.end()) {
-			_MESSAGE("not found");
-			return GetConditionalBase(a_ref, nullptr, applyToAllForms);
+			return SFIDResult;
+			//return GetConditionalBase(a_ref, nullptr, applyToAllForms);
 		}
 		else {
-			_MESSAGE("found");
 			return { nullptr, empty };
 		}
 	}
