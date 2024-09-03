@@ -7,14 +7,6 @@ namespace SpellFactionItemDistributor
 {
 
 	static void AddToCache(TESObjectREFR* ref) {
-		Manager* manager = Manager::GetSingleton();
-		manager->AddToCache(ref->refID);
-		std::string formString = std::to_string(ref->refID) + "\n";
-		std::fstream idCache;
-		idCache.open("SFIDCache.txt", std::ios_base::binary | std::ios_base::app);
-		idCache << std::hex << ref->refID;
-		idCache << '\n';
-		idCache.close();
 	}
 
 	static void AddMiscItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
@@ -94,7 +86,6 @@ namespace SpellFactionItemDistributor
 	static void AddForms(TESObjectREFR* a_ref, TESForm* formToAdd, UInt32 amount) {
 		if (formToAdd) {
 			TESNPC* npc = dynamic_cast<TESNPC*>(a_ref);
-			AddToCache(a_ref);
 			switch (formToAdd->GetFormType())
 			{
 			case (FormType::kFormType_Misc):
@@ -151,45 +142,52 @@ namespace SpellFactionItemDistributor
 		}
 	}
 
+	static void ProcessResult(SFIDResult sfidResult) {
+		//const auto& [ref, sfidResult] = manager->GetSingleSwapData(a_ref, base, "Factions");
+		const auto& [ref, swapData] = sfidResult;
+		if (!ref || swapData.traits.amount == 0) {
+			return;
+		}
+		auto seededRNG = SeedRNG(static_cast<std::uint32_t>(ref->refID));
+		if (swapData.traits.chance != 100) {
+			const auto rng = swapData.traits.trueRandom ? SeedRNG().Generate<std::uint32_t>(0, 100) :
+				seededRNG.Generate<std::uint32_t>(0, 100);
+			if (rng > swapData.traits.chance) {
+				return;
+			}
+		}
+		if (std::holds_alternative<UInt32>(swapData.formToAdd)) {
+			const auto formToAdd = std::get<UInt32>(swapData.formToAdd);
+			if (formToAdd == 0) {
+				return;
+			}
+			auto form = LookupFormByID(formToAdd);
+			AddForms(ref, form, swapData.traits.amount);
+		}
+		else if (std::holds_alternative<std::unordered_set<UInt32>>(swapData.formToAdd)) {
+			const auto& set = std::get<std::unordered_set<UInt32>>(swapData.formToAdd);
+			for (const auto& form : set) {
+				TESForm* newForm = LookupFormByID(form);
+				if (newForm) {
+					AddForms(ref, newForm, swapData.traits.amount);
+				}
+			}
+		}
+	}
+
 	static inline std::uint32_t originalAddress;
 
 	static void __fastcall LinkFormHook(TESObjectREFR* a_ref, void* edx)
 	{
-		bool skip = false;
+		Manager* manager = Manager::GetSingleton();
 		if (const auto base = a_ref->baseForm) {
-			Manager* manager = Manager::GetSingleton();
 			manager->LoadFormsOnce();
-			const auto& [ref, sfidResult] = manager->GetSingleSwapData(a_ref, base, "Factions");
-			if (!ref || sfidResult.traits.amount == 0) {
-				skip = true;
-			}
-			auto seededRNG = SeedRNG(static_cast<std::uint32_t>(a_ref->refID));
-			if (sfidResult.traits.chance != 100 && !skip) {
-				const auto rng = sfidResult.traits.trueRandom ? SeedRNG().Generate<std::uint32_t>(0, 100) :
-					seededRNG.Generate<std::uint32_t>(0, 100);
-				if (rng > sfidResult.traits.chance) {
-					skip = true;
-				}
-			}
-			if (!skip && std::holds_alternative<UInt32>(sfidResult.formToAdd)) {
-				const auto formToAdd = std::get<UInt32>(sfidResult.formToAdd);
-				if (formToAdd == 0) {
-					skip = true;
-				}
-				auto form = LookupFormByID(formToAdd);
-				//_MESSAGE("\t\tadding %u %u to %u", sfidResult.traits.amount, formToAdd, a_ref->refID);
-				AddForms(a_ref, form, sfidResult.traits.amount);
-			}
-			else if (!skip && std::holds_alternative<std::unordered_set<UInt32>>(sfidResult.formToAdd)) {
-				const auto& set = std::get<std::unordered_set<UInt32>>(sfidResult.formToAdd);
-				for (const auto& form : set) {
-					TESForm* newForm = LookupFormByID(form);
-					if (newForm) {
-						AddForms(a_ref, newForm, sfidResult.traits.amount);
-					}
-				}
+			std::vector<SFIDResult> resultVec = manager->GetAllSwapData(a_ref, base);
+			for (SFIDResult result : resultVec) {
+				ProcessResult(result);
 			}
 		}
+		manager->AddToCache(a_ref);
 		ThisStdCall(originalAddress, a_ref);
 	}
 

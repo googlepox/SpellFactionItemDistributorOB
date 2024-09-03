@@ -28,7 +28,7 @@ namespace SpellFactionItemDistributor
 		{
 		}
 
-		[[nodiscard]] bool IsValid(const FormIDStr& a_data) const;
+		[[nodiscard]] bool IsValid(const FormIDStr& a_data, TESObjectREFR* refToCheck) const;
 
 		// members
 		TESObjectREFR* ref;
@@ -53,7 +53,6 @@ namespace SpellFactionItemDistributor
 		void LoadFormsOnce();
 
 		void            PrintConflicts() const;
-		SFIDResult      GetSwapData(TESObjectREFR* a_ref, TESForm* a_base);
 		SFIDResult      GetSingleSwapData(TESObjectREFR* a_ref, TESForm* a_base, std::string formType);
 		std::vector<SFIDResult> GetAllSwapData(TESObjectREFR* a_ref, TESForm* a_base);
 		SFIDResult      GetConditionalBase(TESObjectREFR* a_ref, TESForm* a_base, FormMap<SwapDataConditional> conditionalForms, std::string formType);
@@ -62,7 +61,7 @@ namespace SpellFactionItemDistributor
 		bool IsLeveledItemRefSwapped(const TESObjectREFR* a_refr) const;
 
 		void LoadCache();
-		void AddToCache(UInt32 formID);
+		void AddToCache(TESObjectREFR* ref);
 		std::unordered_set<UInt32>     processedForms;
 
 	private:
