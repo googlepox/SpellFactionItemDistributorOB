@@ -80,6 +80,82 @@ namespace SpellFactionItemDistributor
 
 	}
 
+	static bool HasKeywordEditorID(TESObjectREFR* ref, const std::string& a_keyword)
+	{
+		if (ref) {
+			std::string editorID = (ref->GetEditorID2());
+			std::string newKey = a_keyword;
+			std::transform(newKey.begin(), newKey.end(), newKey.begin(), tolower);
+			std::transform(editorID.begin(), editorID.end(), editorID.begin(), tolower);
+			std::string cStrKey = newKey.c_str();
+			std::string cStrEditorID = editorID.c_str();
+			if ((cStrEditorID.find(cStrKey.c_str()) != std::string::npos) && (cStrKey.find('-') == std::string::npos)) {
+				return true;
+			}
+			return false;
+		}
+		else {
+			return false;
+		}
+
+	}
+
+	static bool HasKeywordRace(TESObjectREFR* ref, const std::string& a_keyword)
+	{
+		if (ref) {
+			TESActorBase* actor = dynamic_cast<TESActorBase*>(ref->baseForm);
+			TESNPC* npc = dynamic_cast<TESNPC*>(actor);
+			std::string editorID = (npc->race.race->GetEditorID2());
+			std::string refID = std::to_string(npc->race.race->refID).c_str();
+			std::string newKey = a_keyword;
+			std::transform(newKey.begin(), newKey.end(), newKey.begin(), tolower);
+			std::transform(editorID.begin(), editorID.end(), editorID.begin(), tolower);
+			std::string cStrKey = newKey.c_str();
+			std::string cStrEditorID = editorID.c_str();
+			if ((cStrEditorID.find(cStrKey.c_str()) != std::string::npos) && (cStrKey.find('-') == std::string::npos)) {
+				return true;
+			}
+			else if ((refID.find(cStrKey.c_str()) != std::string::npos) && (cStrKey.find('-') == std::string::npos)) {
+				return true;
+			}
+			return false;
+		}
+		else {
+			return false;
+		}
+	}
+
+	static bool HasKeywordFaction(TESObjectREFR* ref, const std::string& a_keyword)
+	{
+		if (ref) {
+			TESActorBase* actor = dynamic_cast<TESActorBase*>(ref->baseForm);
+			TESNPC* npc = dynamic_cast<TESNPC*>(actor);
+			TESActorBaseData::FactionListEntry* entry = &npc->actorBaseData.factionList;
+			while (entry && entry->data)
+			{	
+				TESFaction* faction = entry->data->faction;
+				std::string editorID = faction->GetEditorID2();
+				std::string refID = std::to_string(faction->refID).c_str();
+				std::string newKey = a_keyword;
+				std::transform(newKey.begin(), newKey.end(), newKey.begin(), tolower);
+				std::transform(editorID.begin(), editorID.end(), editorID.begin(), tolower);
+				std::string cStrKey = newKey.c_str();
+				std::string cStrEditorID = editorID.c_str();
+				if ((cStrEditorID.find(cStrKey.c_str()) != std::string::npos) && (cStrKey.find('-') == std::string::npos)) {
+					return true;
+				}
+				else if ((refID.find(cStrKey.c_str()) != std::string::npos) && (cStrKey.find('-') == std::string::npos)) {
+					return true;
+				}
+				entry = entry->Next();
+			}
+			return false;
+		}
+		else {
+			return false;
+		}
+	}
+
 	bool ConditionalInput::IsValid(const FormIDStr& a_data) const
 	{
 		if (std::holds_alternative<UInt32>(a_data)) {
@@ -123,7 +199,21 @@ namespace SpellFactionItemDistributor
 			}
 		}
 		else {
-			return HasKeywordCell(currentCell, std::get<std::string>(a_data));
+			if (HasKeywordCell(currentCell, std::get<std::string>(a_data))) {
+				return true;
+			}
+			else if (HasKeywordEditorID(ref, std::get<std::string>(a_data))) {
+				return true;
+			}
+			else if (HasKeywordRace(ref, std::get<std::string>(a_data))) {
+				return true;
+			}
+			else if (HasKeywordFaction(ref, std::get<std::string>(a_data))) {
+				return true;
+			}
+			else {
+				return false;
+			}
 		}
 		return false;
 	}
@@ -341,11 +431,13 @@ namespace SpellFactionItemDistributor
 	void Manager::LoadCache() {
 		std::string formLine;
 		std::ifstream idCache;
-		//_MESSAGE("opening cache");
 		idCache.open("SFIDCache.txt");
 		while (std::getline(idCache, formLine)) {
-			_MESSAGE("loaded line %s", formLine.c_str());
-			processedForms.emplace(atoi(formLine.c_str()));
+			std::stringstream stringStream;
+			stringStream << std::hex << formLine;
+			UInt32 formID;
+			stringStream >> formID;
+			processedForms.emplace(formID);
 		}
 		idCache.close();
 	}
@@ -395,6 +487,9 @@ namespace SpellFactionItemDistributor
 		if (const auto it = processedForms.find(a_ref->refID); it == processedForms.end()) {
 			return SFIDResult;
 			//return GetConditionalBase(a_ref, nullptr, applyToAllForms);
+		}
+		else if (const auto it = processedForms.find(a_ref->refID); it != processedForms.end()) {
+
 		}
 		else {
 			return { nullptr, empty };
