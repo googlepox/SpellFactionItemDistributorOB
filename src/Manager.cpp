@@ -5,57 +5,126 @@ extern OBSEScriptInterface* g_script;
 
 namespace SpellFactionItemDistributor
 {
-	enum FormCode {
-		form,
-		spell,
-		faction,
-		equippable,
-		item
-	};
-
-	FormCode GetFormCodeFromString(std::string const& formString) {
+	FormCode GetFormCodeFromString(std::string formString) {
 		if (formString == "Forms") return form;
 		if (formString == "Spells") return spell;
 		if (formString == "Factions") return faction;
 		if (formString == "Equippables") return equippable;
+		if (formString == "Packages") return package;
 		if (formString == "Items") return item;
 	}
 
-	FormMap<SwapDataVec>& Manager::get_form_map(const std::string& a_str)
+	FormMap<SwapDataVec>& Manager::get_form_vec(const std::string& a_str)
 	{
 		switch (GetFormCodeFromString(a_str))
 		{
-		case (form): {
-			return allForms;
+		case (item): {
+			return allItems;
+			break;
+		}
+		case (equippable): {
+			return allEquipment;
+			break;
+		}
+		case (spell): {
+			return allSpells;
+			break;
+		}
+		case (faction): {
+			return allFactions;
+			break;
+		}
+		case (package): {
+			return allPackages;
 			break;
 		}
 		default:
-			return allForms;
+			return allItems;
 			break;
 		}
 	}
 
-	void Manager::get_forms(const std::string& a_path, const std::string& a_str, FormMap<SwapDataVec>& a_map)
+	FormMap<SwapDataConditional>& Manager::get_form_map(const std::string& a_str)
+	{
+		switch (GetFormCodeFromString(a_str))
+		{
+		case (item): {
+			return allItemsConditional;
+			break;
+		}
+		case (equippable): {
+			return allEquipmentConditional;
+			break;
+		}
+		case (spell): {
+			return allSpellsConditional;
+			break;
+		}
+		case (faction): {
+			return allFactionsConditional;
+			break;
+		}
+		case (package): {
+			return allPackagesConditional;
+			break;
+		}
+		default:
+			return allItemsConditional;
+			break;
+		}
+	}
+
+	FormMap<SwapDataConditional>& Manager::get_form_map_all(const std::string& a_str)
+	{
+		switch (GetFormCodeFromString(a_str))
+		{
+		case (item): {
+			return applyToAllItems;
+			break;
+		}
+		case (equippable): {
+			return applyToAllEquipment;
+			break;
+		}
+		case (spell): {
+			return applyToAllSpells;
+			break;
+		}
+		case (faction): {
+			return applyToAllFactions;
+			break;
+		}
+		case (package): {
+			return applyToAllPackages;
+			break;
+		}
+		default:
+			return applyToAllItems;
+			break;
+		}
+	}
+
+	void Manager::get_forms(const std::string& a_path, const std::string& a_str, FormMap<SwapDataVec>& a_map, std::string formType)
 	{
 		return SwapData::GetForms(a_path, a_str, [&](UInt32 a_baseID, const SwapData& a_SwapData) {
 			a_map[a_baseID].push_back(a_SwapData);
 			});
 	}
 
-	void Manager::get_forms(const std::string& a_path, const std::string& a_str, const std::vector<FormIDStr>& a_conditionalIDs)
+	void Manager::get_forms(const std::string& a_path, const std::string& a_str, const std::vector<FormIDStr>& a_conditionalIDs, std::string formType)
 	{
 		return SwapData::GetForms(a_path, a_str, [&](const UInt32 a_baseID, const SwapData& a_SwapData) {
 			for (auto& id : a_conditionalIDs) {
-				allFormsConditional[a_baseID][id].push_back(a_SwapData);
+				get_form_map(formType)[a_baseID][id].push_back(a_SwapData);
 			}
 			});
 	}
 
-	void Manager::get_forms_all(const std::string& a_path, const std::string& a_str, const std::vector<FormIDStr>& a_conditionalIDs)
+	void Manager::get_forms_all(const std::string& a_path, const std::string& a_str, const std::vector<FormIDStr>& a_conditionalIDs, std::string formType)
 	{
 		return SwapData::GetForms(a_path, a_str, [&](const UInt32 a_baseID, const SwapData& a_SwapData) {
 			for (auto& id : a_conditionalIDs) {
-				applyToAllForms[a_baseID][id].push_back(a_SwapData);
+				get_form_map_all(formType)[a_baseID][id].push_back(a_SwapData);
 			}
 			});
 	}
@@ -287,15 +356,68 @@ namespace SpellFactionItemDistributor
 					CSimpleIniA::TNamesDepend values;
 					ini.GetAllKeys(section, values);
 					values.sort(CSimpleIniA::Entry::LoadOrder());
-
-					if (!values.empty()) {
-						_MESSAGE("\t\t\t%u Items found", values.size());
-						for (const auto& key : values) {
-							if (string::icontains(key.pItem, "ALL")) {
-								get_forms_all(path, key.pItem, processedConditions);
+					if (splitSection[0] == "Items") {
+						if (!values.empty()) {
+							_MESSAGE("\t\t\t%u items found", values.size());
+							for (const auto& key : values) {
+								if (string::icontains(key.pItem, "ALL")) {
+									get_forms_all(path, key.pItem, processedConditions, section);
+								}
+								else {
+									get_forms(path, key.pItem, processedConditions, section);
+								}
 							}
-							else {
-								get_forms(path, key.pItem, processedConditions);
+						}
+					}
+					else if (splitSection[0] == "Equipment") {
+						if (!values.empty()) {
+							_MESSAGE("\t\t\t%u equippables found", values.size());
+							for (const auto& key : values) {
+								if (string::icontains(key.pItem, "ALL")) {
+									get_forms_all(path, key.pItem, processedConditions, section);
+								}
+								else {
+									get_forms(path, key.pItem, processedConditions, section);
+								}
+							}
+						}
+					}
+					else if (splitSection[0] == "Spells") {
+						if (!values.empty()) {
+							_MESSAGE("\t\t\t%u spells found", values.size());
+							for (const auto& key : values) {
+								if (string::icontains(key.pItem, "ALL")) {
+									get_forms_all(path, key.pItem, processedConditions, section);
+								}
+								else {
+									get_forms(path, key.pItem, processedConditions, section);
+								}
+							}
+						}
+					}
+					else if (splitSection[0] == "Factions") {
+						if (!values.empty()) {
+							_MESSAGE("\t\t\t%u factions found", values.size());
+							for (const auto& key : values) {
+								if (string::icontains(key.pItem, "ALL")) {
+									get_forms_all(path, key.pItem, processedConditions, section);
+								}
+								else {
+									get_forms(path, key.pItem, processedConditions, section);
+								}
+							}
+						}
+					}
+					else if (splitSection[0] == "Packages") {
+						if (!values.empty()) {
+							_MESSAGE("\t\t\t%u packages found", values.size());
+							for (const auto& key : values) {
+								if (string::icontains(key.pItem, "ALL")) {
+									get_forms_all(path, key.pItem, processedConditions, section);
+								}
+								else {
+									get_forms(path, key.pItem, processedConditions, section);
+								}
 							}
 						}
 					}
@@ -307,10 +429,45 @@ namespace SpellFactionItemDistributor
 					ini.GetAllKeys(section, values);
 					values.sort(CSimpleIniA::Entry::LoadOrder());
 
-					if (!values.empty()) {
-						_MESSAGE("\t\t\t%u items found", values.size());
-						for (const auto& key : values) {
-							get_forms(path, key.pItem, allForms);
+					if (string::iequals(section, "Items")) {
+						if (!values.empty()) {
+							_MESSAGE("\t\t\t%u items found", values.size());
+							for (const auto& key : values) {
+								get_forms(path, key.pItem, allItems, section);
+							}
+						}
+					}
+					else if (string::iequals(section, "Equipment")) {
+						if (!values.empty()) {
+							_MESSAGE("\t\t\t%u equippables found", values.size());
+							for (const auto& key : values) {
+								get_forms(path, key.pItem, allEquipment, section);
+							}
+						}
+					}
+					else if (string::iequals(section, "Spells")) {
+						if (!values.empty()) {
+							_MESSAGE("\t\t\t%u spells found", values.size());
+							for (const auto& key : values) {
+								get_forms(path, key.pItem, allSpells, section);
+							}
+						}
+					}
+					else if (string::iequals(section, "Factions")) {
+						_MESSAGE("it's a faction section");
+						if (!values.empty()) {
+							_MESSAGE("\t\t\t%u factions found", values.size());
+							for (const auto& key : values) {
+								get_forms(path, key.pItem, allFactions, section);
+							}
+						}
+					}
+					else if (string::iequals(section, "Packages")) {
+						if (!values.empty()) {
+							_MESSAGE("\t\t\t%u packages found", values.size());
+							for (const auto& key : values) {
+								get_forms(path, key.pItem, allPackages, section);
+							}
 						}
 					}
 				}
@@ -319,13 +476,25 @@ namespace SpellFactionItemDistributor
 
 		_MESSAGE("-RESULT-");
 
-		_MESSAGE("%u forms processed", allForms.size());
-		_MESSAGE("%u conditional forms processed", allFormsConditional.size());
+		_MESSAGE("%u Items processed", allItems.size());
+		_MESSAGE("%u conditional Items processed", allItemsConditional.size());
+
+		_MESSAGE("%u Equippables processed", allEquipment.size());
+		_MESSAGE("%u conditional Equippables processed", allEquipmentConditional.size());
+
+		_MESSAGE("%u Spells processed", allSpells.size());
+		_MESSAGE("%u conditional Spells processed", allSpellsConditional.size());
+
+		_MESSAGE("%u Factions processed", allFactions.size());
+		_MESSAGE("%u conditional Factions processed", allFactionsConditional.size());
+
+		_MESSAGE("%u Packages processed", allPackages.size());
+		_MESSAGE("%u conditional Packages processed", allPackagesConditional.size());
 
 		_MESSAGE("-CONFLICTS-");
-		
+
 		// TODO
-		
+
 		const auto log_conflicts = [&]<typename T>(std::string_view a_type, const FormMap<T>&a_map) {
 			if (a_map.empty()) {
 				return;
@@ -356,11 +525,14 @@ namespace SpellFactionItemDistributor
 			}
 		};
 
-		log_conflicts("Forms", allForms);
+		log_conflicts("Items", allItems);
+		log_conflicts("Equippables", allEquipment);
+		log_conflicts("Spells", allSpells);
+		log_conflicts("Factions", allFactions);
+		log_conflicts("Packages", allPackages);
 
 		_MESSAGE("-END-");
 	}
-
 	void Manager::PrintConflicts() const
 	{
 		if (hasConflicts) {
@@ -368,7 +540,7 @@ namespace SpellFactionItemDistributor
 		}
 	}
 
-	SFIDResult Manager::GetConditionalBase(TESObjectREFR* a_ref, TESForm* a_base, FormMap<SwapDataConditional> conditionalForms)
+	SFIDResult Manager::GetConditionalBase(TESObjectREFR* a_ref, TESForm* a_base, FormMap<SwapDataConditional> conditionalForms, std::string formType)
 	{
 		SwapData empty;
 
@@ -391,7 +563,7 @@ namespace SpellFactionItemDistributor
 					return { nullptr, empty };
 				}
 			}
-			else if (const auto it = allForms.find(static_cast<std::uint32_t>(0xFFFFFFFF)); it != allForms.end()) {
+			else if (const auto it = get_form_vec(formType).find(static_cast<std::uint32_t>(0xFFFFFFFF)); it != get_form_vec(formType).end()) {
 				for (SwapData swapData : it->second | std::ranges::views::reverse) {
 					if (!swapData.GetSwapBase(a_ref)) {
 						return { a_ref, swapData };
@@ -469,19 +641,19 @@ namespace SpellFactionItemDistributor
 		SFIDResult SFIDResult{ a_ref, empty };
 
 		if (a_ref->refID < 0xFF000000) {
-			SFIDResult = get_swap_base(a_base, allForms);
+			//SFIDResult = get_swap_base(a_base, allForms);
 		}
 
 		if (!SFIDResult.first) {
-			SFIDResult = GetConditionalBase(a_ref, a_base, allFormsConditional);
+			//SFIDResult = GetConditionalBase(a_ref, a_base, allFormsConditional);
 		}
 		
 		if (!SFIDResult.first) {
-			SFIDResult = GetConditionalBase(a_ref, nullptr, applyToAllForms);
+			//SFIDResult = GetConditionalBase(a_ref, nullptr, applyToAllForms);
 		}
 
 		if (!SFIDResult.first) {
-			SFIDResult = GetConditionalBase(nullptr, nullptr, applyToAllForms);
+			//SFIDResult = GetConditionalBase(nullptr, nullptr, applyToAllForms);
 		}
 		
 		if (const auto it = processedForms.find(a_ref->refID); it == processedForms.end()) {
@@ -494,5 +666,82 @@ namespace SpellFactionItemDistributor
 		else {
 			return { nullptr, empty };
 		}
+	}
+
+	SFIDResult Manager::GetSingleSwapData(TESObjectREFR* a_ref, TESForm* a_base, std::string formType)
+	{
+		FormMap<SwapDataVec> allForms = get_form_vec(formType);
+		FormMap<SwapDataConditional> allFormsConditional = get_form_map(formType);
+		FormMap<SwapDataConditional> applyToAllForms = get_form_map_all(formType);
+
+		SwapData empty;
+		SFIDResult emptyResult = { nullptr, empty };
+
+		const auto get_swap_base = [a_ref](const TESForm* a_form, const FormMap<SwapDataVec>& a_map) -> SFIDResult {
+			if (const auto it = a_map.find(a_form->refID); it != a_map.end()) {
+				for (SwapData swapData : it->second | std::ranges::views::reverse) {
+					if (!swapData.GetSwapBase(a_ref)) {
+						return { a_ref, swapData };
+					}
+					else {
+						return { a_ref, swapData };
+					}
+				}
+			}
+			SwapData empty;
+			return { nullptr, empty };
+			};
+
+		SFIDResult SFIDResult{ a_ref, empty };
+
+		if (a_ref->refID < 0xFF000000) {
+			SFIDResult = get_swap_base(a_base, allForms);
+		}
+
+		if (!SFIDResult.first) {
+			SFIDResult = GetConditionalBase(a_ref, a_base, allFormsConditional, formType);
+		}
+
+		if (!SFIDResult.first) {
+			SFIDResult = GetConditionalBase(a_ref, nullptr, applyToAllForms, formType);
+		}
+
+		if (!SFIDResult.first) {
+			SFIDResult = GetConditionalBase(nullptr, nullptr, applyToAllForms, formType);
+		}
+
+		if (const auto it = processedForms.find(a_ref->refID); it == processedForms.end()) {
+			return SFIDResult;
+			//return GetConditionalBase(a_ref, nullptr, applyToAllForms);
+		}
+		else if (formType != "Items" || formType != "Equipment") {
+			return SFIDResult;
+		}
+		else {
+			return { nullptr, empty };
+		}
+	}
+
+	std::vector<SFIDResult> Manager::GetAllSwapData(TESObjectREFR* a_ref, TESForm* a_base) {
+		std::vector<SFIDResult> resultVec;
+
+		if (allItems.size() > 0 || allItems.size() > 0 || applyToAllItems.size() > 0) {
+			resultVec.push_back(GetSingleSwapData(a_ref, a_base, "Items"));
+		}
+		if (allEquipment.size() > 0 || allEquipmentConditional.size() > 0 || applyToAllEquipment.size() > 0) {
+			resultVec.push_back(GetSingleSwapData(a_ref, a_base, "Equippables"));
+		}
+		if (allSpells.size() > 0 || allSpellsConditional.size() > 0 || applyToAllSpells.size() > 0) {
+			resultVec.push_back(GetSingleSwapData(a_ref, a_base, "Spells"));
+		}
+		if (allFactions.size() > 0 || allFactionsConditional.size() > 0 || applyToAllFactions.size() > 0) {
+			_MESSAGE("FACTION");
+			resultVec.push_back(GetSingleSwapData(a_ref, a_base, "Factions"));
+		}
+		if (allPackages.size() > 0 || allPackagesConditional.size() > 0 || applyToAllPackages.size() > 0) {
+			resultVec.push_back(GetSingleSwapData(a_ref, a_base, "Packages"));
+		}
+
+		return resultVec;
 	}
 }

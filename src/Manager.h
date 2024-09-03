@@ -5,6 +5,15 @@
 
 namespace SpellFactionItemDistributor
 {
+	enum FormCode {
+		form,
+		spell,
+		faction,
+		package,
+		equippable,
+		item
+	};
+
 	inline Script* HasKeywordScript;
 	[[nodiscard]] bool HasKeyword(TESObjectCELL* a_cell, const std::string& a_keyword);
 
@@ -34,6 +43,7 @@ namespace SpellFactionItemDistributor
 	class Manager
 	{
 	public:
+
 		static Manager* GetSingleton()
 		{
 			static Manager singleton;
@@ -44,7 +54,9 @@ namespace SpellFactionItemDistributor
 
 		void            PrintConflicts() const;
 		SFIDResult      GetSwapData(TESObjectREFR* a_ref, TESForm* a_base);
-		SFIDResult      GetConditionalBase(TESObjectREFR* a_ref, TESForm* a_base, FormMap<SwapDataConditional> conditionalForms);
+		SFIDResult      GetSingleSwapData(TESObjectREFR* a_ref, TESForm* a_base, std::string formType);
+		std::vector<SFIDResult> GetAllSwapData(TESObjectREFR* a_ref, TESForm* a_base);
+		SFIDResult      GetConditionalBase(TESObjectREFR* a_ref, TESForm* a_base, FormMap<SwapDataConditional> conditionalForms, std::string formType);
 
 		void InsertLeveledItemRef(const TESObjectREFR* a_refr);
 		bool IsLeveledItemRefSwapped(const TESObjectREFR* a_refr) const;
@@ -64,18 +76,38 @@ namespace SpellFactionItemDistributor
 
 		void LoadForms();
 
-		FormMap<SwapDataVec>& get_form_map(const std::string& a_str);
-		static void           get_forms(const std::string& a_path, const std::string& a_str, FormMap<SwapDataVec>& a_map);
-		void                  get_forms(const std::string& a_path, const std::string& a_str, const std::vector<FormIDStr>& a_conditionalIDs);
+		FormMap<SwapDataVec>& get_form_vec(const std::string& a_str);
+		FormMap<SwapDataConditional>& get_form_map(const std::string& a_str);
+		FormMap<SwapDataConditional>& get_form_map_all(const std::string& a_str);
+		static void           get_forms(const std::string& a_path, const std::string& a_str, FormMap<SwapDataVec>& a_map, std::string);
+		void                  get_forms(const std::string& a_path, const std::string& a_str, const std::vector<FormIDStr>& a_conditionalIDs, std::string);
 
-		void get_forms_all(const std::string& a_path, const std::string& a_str, const std::vector<FormIDStr>& applyToAllForms);
+		void get_forms_all(const std::string& a_path, const std::string& a_str, const std::vector<FormIDStr>& applyToAllForms, std::string);
 
 		// members
-		FormMap<SwapDataVec>         allForms{};
-		FormMap<SwapDataConditional> allFormsConditional{};
-		FormMap<SwapDataConditional> applyToAllForms{};
-		FormIDSet applyToAllFormsSet{};
+		//FormMap<SwapDataVec>         allForms{};
+		//FormMap<SwapDataConditional> allFormsConditional{};
+		//FormMap<SwapDataConditional> applyToAllForms{};
 
+		FormMap<SwapDataVec> allItems{};
+		FormMap<SwapDataConditional> allItemsConditional{};
+		FormMap<SwapDataConditional> applyToAllItems{};
+
+		FormMap<SwapDataVec> allEquipment{};
+		FormMap<SwapDataConditional> allEquipmentConditional{};
+		FormMap<SwapDataConditional> applyToAllEquipment{};
+
+		FormMap<SwapDataVec> allSpells{};
+		FormMap<SwapDataConditional> allSpellsConditional{};
+		FormMap<SwapDataConditional> applyToAllSpells{};
+
+		FormMap<SwapDataVec> allFactions{};
+		FormMap<SwapDataConditional> allFactionsConditional{};
+		FormMap<SwapDataConditional> applyToAllFactions{};
+
+		FormMap<SwapDataVec> allPackages{};
+		FormMap<SwapDataConditional> allPackagesConditional{};
+		FormMap<SwapDataConditional> applyToAllPackages{};
 
 
 		std::unordered_set<std::uint32_t> swappedLeveledItemRefs{};

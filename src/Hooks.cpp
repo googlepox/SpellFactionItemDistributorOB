@@ -59,11 +59,7 @@ namespace SpellFactionItemDistributor
 		SInt16 minLevel = npc->actorBaseData.minLevel;
 		TESLeveledList* lev = dynamic_cast<TESLeveledList*>(form);
 		TESForm* newForm = lev->CalcElement(level, true, maxLevel - minLevel);
-		if (newForm) {
-			AddSingleSpell(ref, newForm);
-		}
-
-		SpellItem* spell = dynamic_cast<SpellItem*>(form);
+		SpellItem* spell = dynamic_cast<SpellItem*>(newForm);
 		SpellListVisitor newVisitor = SpellListVisitor(&npc->spellList.spellList);
 		TESSpellList::Entry* newSpell = (TESSpellList::Entry*)FormHeap_Allocate(sizeof(TESSpellList::Entry));
 		newSpell->type = spell;
@@ -163,7 +159,7 @@ namespace SpellFactionItemDistributor
 		if (const auto base = a_ref->baseForm) {
 			Manager* manager = Manager::GetSingleton();
 			manager->LoadFormsOnce();
-			const auto& [ref, sfidResult] = manager->GetSwapData(a_ref, base);
+			const auto& [ref, sfidResult] = manager->GetSingleSwapData(a_ref, base, "Factions");
 			if (!ref || sfidResult.traits.amount == 0) {
 				skip = true;
 			}
