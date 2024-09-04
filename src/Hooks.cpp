@@ -36,6 +36,7 @@ namespace SpellFactionItemDistributor
 			}
 			itr = itr - 1;
 		}
+		AddToCache(ref);
 	}
 
 	static void AddSingleSpell(TESObjectREFR* ref, TESForm* form) {

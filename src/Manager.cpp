@@ -129,13 +129,28 @@ namespace SpellFactionItemDistributor
 	static bool HasKeywordCell(TESObjectCELL* a_cell, const std::string& a_keyword)
 	{
 		if (a_cell) {
+			bool isExclusion;
 			std::string editorID = (a_cell->GetEditorID2());
 			std::string newKey = a_keyword;
+			if (newKey.find('-') != std::string::npos) {
+				std::string::iterator end_pos = std::remove(newKey.begin(), newKey.end(), '-');
+				newKey.erase(end_pos, newKey.end());
+				isExclusion = true;
+			}
+			else {
+				isExclusion = false;
+			}
 			std::transform(newKey.begin(), newKey.end(), newKey.begin(), tolower);
 			std::transform(editorID.begin(), editorID.end(), editorID.begin(), tolower);
 			std::string cStrKey = newKey.c_str();
 			std::string cStrEditorID = editorID.c_str();
-			if ((cStrEditorID.find(cStrKey.c_str()) != std::string::npos) && (cStrKey.find('-') == std::string::npos)) {
+			if (cStrEditorID.find(cStrKey.c_str()) != std::string::npos) {
+				if (isExclusion) {
+					return false;
+				}
+				return true;
+			}
+			else if (isExclusion) {
 				return true;
 			}
 			return false;
@@ -149,13 +164,28 @@ namespace SpellFactionItemDistributor
 	static bool HasKeywordEditorID(TESObjectREFR* ref, const std::string& a_keyword)
 	{
 		if (ref) {
+			bool isExclusion;
 			std::string editorID = (ref->baseForm->GetEditorID2());
 			std::string newKey = a_keyword;
+			if (newKey.find('-') != std::string::npos) {
+				std::string::iterator end_pos = std::remove(newKey.begin(), newKey.end(), '-');
+				newKey.erase(end_pos, newKey.end());
+				isExclusion = true;
+			}
+			else {
+				isExclusion = false;
+			}
 			std::transform(newKey.begin(), newKey.end(), newKey.begin(), tolower);
 			std::transform(editorID.begin(), editorID.end(), editorID.begin(), tolower);
 			std::string cStrKey = newKey.c_str();
 			std::string cStrEditorID = editorID.c_str();
-			if ((cStrEditorID.find(cStrKey.c_str()) != std::string::npos) && (cStrKey.find('-') == std::string::npos)) {
+			if (cStrEditorID.find(cStrKey.c_str()) != std::string::npos) {
+				if (isExclusion) {
+					return false;
+				}
+				return true;
+			}
+			else if (isExclusion) {
 				return true;
 			}
 			return false;
@@ -169,19 +199,37 @@ namespace SpellFactionItemDistributor
 	static bool HasKeywordRace(TESObjectREFR* ref, const std::string& a_keyword)
 	{
 		if (ref) {
+			bool isExclusion;
 			TESActorBase* actor = dynamic_cast<TESActorBase*>(ref->baseForm);
 			TESNPC* npc = dynamic_cast<TESNPC*>(actor);
 			std::string editorID = (npc->race.race->GetEditorID2());
 			std::string refID = std::to_string(npc->race.race->refID).c_str();
 			std::string newKey = a_keyword;
+			if (newKey.find('-') != std::string::npos) {
+				std::string::iterator end_pos = std::remove(newKey.begin(), newKey.end(), '-');
+				newKey.erase(end_pos, newKey.end());
+				isExclusion = true;
+			}
+			else {
+				isExclusion = false;
+			}
 			std::transform(newKey.begin(), newKey.end(), newKey.begin(), tolower);
 			std::transform(editorID.begin(), editorID.end(), editorID.begin(), tolower);
 			std::string cStrKey = newKey.c_str();
 			std::string cStrEditorID = editorID.c_str();
-			if ((cStrEditorID.find(cStrKey.c_str()) != std::string::npos) && (cStrKey.find('-') == std::string::npos)) {
+			if (cStrEditorID.find(cStrKey.c_str()) != std::string::npos) {
+				if (isExclusion) {
+					return false;
+				}
 				return true;
 			}
-			else if ((refID.find(cStrKey.c_str()) != std::string::npos) && (cStrKey.find('-') == std::string::npos)) {
+			else if (refID.find(cStrKey.c_str()) != std::string::npos) {
+				if (isExclusion) {
+					return false;
+				}
+				return true;
+			}
+			else if (isExclusion) {
 				return true;
 			}
 			return false;
@@ -194,6 +242,8 @@ namespace SpellFactionItemDistributor
 	static bool HasKeywordFaction(TESObjectREFR* ref, const std::string& a_keyword)
 	{
 		if (ref) {
+			bool isExclusion = false;
+			bool found = false;
 			TESActorBase* actor = dynamic_cast<TESActorBase*>(ref->baseForm);
 			TESNPC* npc = dynamic_cast<TESNPC*>(actor);
 			TESActorBaseData::FactionListEntry* entry = &npc->actorBaseData.factionList;
@@ -203,17 +253,36 @@ namespace SpellFactionItemDistributor
 				std::string editorID = faction->GetEditorID2();
 				std::string refID = std::to_string(faction->refID).c_str();
 				std::string newKey = a_keyword;
+				if (newKey.find('-') != std::string::npos) {
+					std::string::iterator end_pos = std::remove(newKey.begin(), newKey.end(), '-');
+					newKey.erase(end_pos, newKey.end());
+					isExclusion = true;
+				}
+				else {
+					isExclusion = false;
+				}
 				std::transform(newKey.begin(), newKey.end(), newKey.begin(), tolower);
 				std::transform(editorID.begin(), editorID.end(), editorID.begin(), tolower);
 				std::string cStrKey = newKey.c_str();
 				std::string cStrEditorID = editorID.c_str();
-				if ((cStrEditorID.find(cStrKey.c_str()) != std::string::npos) && (cStrKey.find('-') == std::string::npos)) {
-					return true;
+				if (cStrEditorID.find(cStrKey.c_str()) != std::string::npos) {
+					found = true;
 				}
-				else if ((refID.find(cStrKey.c_str()) != std::string::npos) && (cStrKey.find('-') == std::string::npos)) {
-					return true;
+				else if (refID.find(cStrKey.c_str()) != std::string::npos) {
+					found = true;
 				}
 				entry = entry->Next();
+			}
+			if (found) {
+				if (isExclusion) {
+					return false;
+				}
+				else {
+					return true;
+				}
+			}
+			else if (isExclusion) {
+				return true;
 			}
 			return false;
 		}
@@ -225,21 +294,26 @@ namespace SpellFactionItemDistributor
 	bool ConditionalInput::IsValid(const FormIDStr& a_data, TESObjectREFR* refToCheck) const
 	{
 		if (refToCheck) {
-			if (HasKeywordCell(refToCheck->parentCell, std::get<std::string>(a_data))) {
-				return true;
+			bool hasCell = HasKeywordCell(refToCheck->parentCell, std::get<std::string>(a_data));
+			bool hasEditorID = HasKeywordEditorID(refToCheck, std::get<std::string>(a_data));
+			bool hasRace = HasKeywordRace(refToCheck, std::get<std::string>(a_data));
+			bool hasFaction = HasKeywordFaction(refToCheck, std::get<std::string>(a_data));
+			if (std::get<std::string>(a_data).find('-') != std::string::npos) {
+				
+				if (hasCell && hasEditorID && hasRace && hasFaction) {
+					return true;
+				}
+				else {
+					return false;
+				}
 			}
-			else if (HasKeywordEditorID(refToCheck, std::get<std::string>(a_data))) {
-				return true;
-			}
-			else if (HasKeywordRace(refToCheck, std::get<std::string>(a_data))) {
-				return true;
-			}
-			else if (HasKeywordFaction(refToCheck, std::get<std::string>(a_data))) {
+			else if (hasCell || hasEditorID || hasRace || hasFaction) {
 				return true;
 			}
 			else {
 				return false;
 			}
+			
 		}
 		return false;
 	}
@@ -300,6 +374,9 @@ namespace SpellFactionItemDistributor
 			for (auto& [section, comment, keyOrder] : sections) {
 				if (string::icontains(section, "|")) {
 					auto splitSection = string::split(section, "|");
+					std::string::iterator end_pos = std::remove(splitSection[1].begin(), splitSection[1].end(), ' ');
+					splitSection[1].erase(end_pos, splitSection[1].end());
+
 					auto conditions = string::split(splitSection[1], ",");  //[Forms|EditorID,EditorID2]
 
 					_MESSAGE("\t\treading [%s] : %u conditions", splitSection[0].c_str(), conditions.size());
