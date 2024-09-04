@@ -7,15 +7,19 @@ namespace SpellFactionItemDistributor
 {
 
 	static void AddToCache(TESObjectREFR* ref) {
+		Manager* manager = Manager::GetSingleton();
+		manager->AddToCache(ref);
 	}
 
 	static void AddMiscItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
 		ref->AddItem(form, nullptr, amount);
+		AddToCache(ref);
 	}
 
 	static void AddEquipItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
 		ref->AddItem(form, nullptr, amount);
 		ref->Equip(form, amount, &ref->baseExtraList, 0);
+		AddToCache(ref);
 	}
 
 	static void AddLevItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
@@ -184,10 +188,10 @@ namespace SpellFactionItemDistributor
 			manager->LoadFormsOnce();
 			std::vector<SFIDResult> resultVec = manager->GetAllSwapData(a_ref, base);
 			for (SFIDResult result : resultVec) {
+				manager->processedForms.emplace(a_ref->refID);
 				ProcessResult(result);
 			}
 		}
-		manager->AddToCache(a_ref);
 		ThisStdCall(originalAddress, a_ref);
 	}
 
@@ -202,7 +206,7 @@ namespace SpellFactionItemDistributor
 	void Install()
 	{
 		_MESSAGE("-HOOKS-");
-		originalAddress = DetourVtable(0xA6FDE8, reinterpret_cast<UInt32>(LinkFormHook)); // kVtbl_Character_LinkForm
+		originalAddress = DetourVtable(0xA6FDE8, reinterpret_cast<UInt32>(LinkFormHook)); // kVtbl_Character_GenerateNiNode
 		_MESSAGE("Installed Character vtable hook");
 
 	}

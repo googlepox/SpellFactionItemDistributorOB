@@ -560,6 +560,7 @@ namespace SpellFactionItemDistributor
 	}
 
 	void Manager::LoadCache() {
+		LoadFormsOnce();
 		std::string formLine;
 		std::ifstream idCache;
 		idCache.open("SFIDCache.txt");
@@ -568,15 +569,16 @@ namespace SpellFactionItemDistributor
 			stringStream << std::hex << formLine;
 			UInt32 formID;
 			stringStream >> formID;
-			processedForms.emplace(formID);
+			//processedForms.emplace(formID);
+			cachedForms.emplace(formID);
 		}
 		idCache.close();
 	}
 
 	void Manager::AddToCache(TESObjectREFR* ref)
 	{
-		if (const auto it = processedForms.find(ref->refID); it == processedForms.end()) {
-			processedForms.emplace(ref->refID);
+		if (const auto it = cachedForms.find(ref->refID); it == cachedForms.end()) {
+			cachedForms.emplace(ref->refID);
 			std::string formString = std::to_string(ref->refID) + "\n";
 			std::fstream idCache;
 			idCache.open("SFIDCache.txt", std::ios_base::binary | std::ios_base::app);
@@ -594,6 +596,16 @@ namespace SpellFactionItemDistributor
 
 		SwapData empty;
 		SFIDResult emptyResult = { nullptr, empty };
+
+		if (const auto it = processedForms.find(a_ref->refID); it != processedForms.end()) {
+			return { nullptr, empty };
+		}
+
+		if (const auto it = cachedForms.find(a_ref->refID); it != cachedForms.end()) {
+			if (string::iequals(formType, "Items") || string::iequals(formType, "Equippables")) {
+				return { nullptr, empty };
+			}
+		}
 
 		const auto get_swap_base = [a_ref](const TESForm* a_form, const FormMap<SwapDataVec>& a_map) -> SFIDResult {
 			if (const auto it = a_map.find(a_form->refID); it != a_map.end()) {
@@ -638,10 +650,10 @@ namespace SpellFactionItemDistributor
 			return { nullptr, empty };
 		}
 
-		if (const auto it = processedForms.find(a_ref->refID); it == processedForms.end()) {
+		if (const auto it = cachedForms.find(a_ref->refID); it == cachedForms.end()) {
 			return SFIDResult;
 		}
-		else if (string::iequals(formType, "Factions") || string::iequals(formType, "Spells")) {
+		else if (!string::iequals(formType, "Items") ||  !string::iequals(formType, "Equippables")) {
 			return SFIDResult;
 		}
 		else {

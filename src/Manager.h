@@ -14,9 +14,6 @@ namespace SpellFactionItemDistributor
 		item
 	};
 
-	inline Script* HasKeywordScript;
-	[[nodiscard]] bool HasKeyword(TESObjectCELL* a_cell, const std::string& a_keyword);
-
 	struct ConditionalInput
 	{
 		ConditionalInput(TESObjectREFR* a_ref, TESForm* a_form) :
@@ -61,8 +58,10 @@ namespace SpellFactionItemDistributor
 		bool IsLeveledItemRefSwapped(const TESObjectREFR* a_refr) const;
 
 		void LoadCache();
+		short loadCounter;
 		void AddToCache(TESObjectREFR* ref);
 		std::unordered_set<UInt32>     processedForms;
+		std::unordered_set<UInt32>     cachedForms;
 
 	private:
 		Manager() = default;
@@ -82,11 +81,6 @@ namespace SpellFactionItemDistributor
 		void                  get_forms(const std::string& a_path, const std::string& a_str, const std::vector<FormIDStr>& a_conditionalIDs, std::string);
 
 		void get_forms_all(const std::string& a_path, const std::string& a_str, const std::vector<FormIDStr>& applyToAllForms, std::string);
-
-		// members
-		//FormMap<SwapDataVec>         allForms{};
-		//FormMap<SwapDataConditional> allFormsConditional{};
-		//FormMap<SwapDataConditional> applyToAllForms{};
 
 		FormMap<SwapDataVec> allItems{};
 		FormMap<SwapDataConditional> allItemsConditional{};
