@@ -679,9 +679,10 @@ namespace SpellFactionItemDistributor
 		}
 
 		if (const auto it = cachedForms.find(a_ref->refID); it != cachedForms.end()) {
+			/*
 			if (string::iequals(formType, "Items") || string::iequals(formType, "Equippables")) {
 				return { nullptr, empty };
-			}
+			} */
 		}
 
 		const auto get_swap_base = [a_ref](const TESForm* a_form, const FormMap<SwapDataVec>& a_map) -> SFIDResult {
@@ -730,9 +731,10 @@ namespace SpellFactionItemDistributor
 		if (const auto it = cachedForms.find(a_ref->refID); it == cachedForms.end()) {
 			return SFIDResult;
 		}
+		/*
 		else if (!string::iequals(formType, "Items") ||  !string::iequals(formType, "Equippables")) {
 			return SFIDResult;
-		}
+		} */
 		else {
 			return { nullptr, empty };
 		}

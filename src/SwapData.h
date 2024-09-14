@@ -15,6 +15,7 @@ namespace SpellFactionItemDistributor
 		bool          trueRandom{ false };
 		std::uint32_t chance{ 100 };
 		std::uint32_t amount{ 1 };
+		bool remove{ false };
 	};
 
 	class SFID

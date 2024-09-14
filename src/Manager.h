@@ -62,6 +62,7 @@ namespace SpellFactionItemDistributor
 		void AddToCache(TESObjectREFR* ref);
 		std::unordered_set<UInt32>     processedForms;
 		std::unordered_set<UInt32>     cachedForms;
+		std::unordered_map<UInt32, std::unordered_set<UInt32>>     cachedForms2;
 
 	private:
 		Manager() = default;

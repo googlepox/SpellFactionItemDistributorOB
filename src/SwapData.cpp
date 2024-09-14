@@ -43,6 +43,12 @@ namespace SpellFactionItemDistributor
 					amount = string::to_num<std::uint32_t>(match[1].str());
 				}
 			}
+
+			if (a_str.contains("remove")) {
+				if (srell::cmatch match; srell::regex_search(a_str.c_str(), match, genericRegex)) {
+					remove = true;
+				}
+			}
 		}
 	}
 

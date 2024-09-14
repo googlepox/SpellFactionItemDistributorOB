@@ -13,13 +13,17 @@ namespace SpellFactionItemDistributor
 
 	static void AddMiscItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
 		ref->AddItem(form, nullptr, amount);
-		AddToCache(ref);
+		//AddToCache(ref);
+	}
+
+	static void RemoveItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
+		ref->RemoveItem(form, nullptr, amount, 0, 0, nullptr, 0, 0, 0, 0);
 	}
 
 	static void AddEquipItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
 		ref->AddItem(form, nullptr, amount);
 		ref->Equip(form, amount, &ref->baseExtraList, 0);
-		AddToCache(ref);
+		//AddToCache(ref);
 	}
 
 	static void AddLevItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
@@ -36,7 +40,7 @@ namespace SpellFactionItemDistributor
 			}
 			itr = itr - 1;
 		}
-		AddToCache(ref);
+		//AddToCache(ref);
 	}
 
 	static void AddSingleSpell(TESObjectREFR* ref, TESForm* form) {
@@ -75,6 +79,7 @@ namespace SpellFactionItemDistributor
 		newFaction->data = newFactionData;
 		newFaction->next = NULL;
 		newVisitor.Append(newFaction);
+		ThisStdCall(0x4672F0, &npc->actorBaseData, TESActorBaseData::kModified_BaseFactions);
 	}
 
 	static void AddPackage(TESObjectREFR* ref, TESForm* form) {
@@ -148,7 +153,6 @@ namespace SpellFactionItemDistributor
 	}
 
 	static void ProcessResult(SFIDResult sfidResult) {
-		//const auto& [ref, sfidResult] = manager->GetSingleSwapData(a_ref, base, "Factions");
 		const auto& [ref, swapData] = sfidResult;
 		if (!ref || swapData.traits.amount == 0) {
 			return;
@@ -167,6 +171,9 @@ namespace SpellFactionItemDistributor
 				return;
 			}
 			auto form = LookupFormByID(formToAdd);
+			if (swapData.traits.remove) {
+				RemoveItem(ref, form, swapData.traits.amount);
+			}
 			AddForms(ref, form, swapData.traits.amount);
 		}
 		else if (std::holds_alternative<std::unordered_set<UInt32>>(swapData.formToAdd)) {
@@ -174,15 +181,19 @@ namespace SpellFactionItemDistributor
 			for (const auto& form : set) {
 				TESForm* newForm = LookupFormByID(form);
 				if (newForm) {
+					if (swapData.traits.remove) {
+						RemoveItem(ref, newForm, swapData.traits.amount);
+					}
 					AddForms(ref, newForm, swapData.traits.amount);
 				}
 			}
 		}
 	}
 
-	static inline std::uint32_t originalAddress;
+	static inline std::uint32_t originalAddressNPC;
+	static inline std::uint32_t originalAddressCREA;
 
-	static void __fastcall LinkFormHook(TESObjectREFR* a_ref, void* edx)
+	static void __fastcall LinkFormHookNPC(TESObjectREFR* a_ref, void* edx)
 	{
 		Manager* manager = Manager::GetSingleton();
 		if (const auto base = a_ref->baseForm) {
@@ -191,9 +202,25 @@ namespace SpellFactionItemDistributor
 			for (SFIDResult result : resultVec) {
 				manager->processedForms.emplace(a_ref->refID);
 				ProcessResult(result);
+				AddToCache(a_ref);
 			}
 		}
-		ThisStdCall(originalAddress, a_ref);
+		ThisStdCall(originalAddressNPC, a_ref);
+	}
+
+	static void __fastcall LinkFormHookCREA(TESObjectREFR* a_ref, void* edx)
+	{
+		Manager* manager = Manager::GetSingleton();
+		if (const auto base = a_ref->baseForm) {
+			manager->LoadFormsOnce();
+			std::vector<SFIDResult> resultVec = manager->GetAllSwapData(a_ref, base);
+			for (SFIDResult result : resultVec) {
+				manager->processedForms.emplace(a_ref->refID);
+				ProcessResult(result);
+				AddToCache(a_ref);
+			}
+		}
+		ThisStdCall(originalAddressNPC, a_ref);
 	}
 
 	// Credits to lStewieAl
@@ -207,8 +234,9 @@ namespace SpellFactionItemDistributor
 	void Install()
 	{
 		_MESSAGE("-HOOKS-");
-		originalAddress = DetourVtable(0xA6FDE8, reinterpret_cast<UInt32>(LinkFormHook)); // kVtbl_Character_GenerateNiNode
-		_MESSAGE("Installed Character vtable hook");
+		originalAddressNPC = DetourVtable(0xA6FDE8, reinterpret_cast<UInt32>(LinkFormHookNPC)); // kVtbl_Character_GenerateNiNode
+		originalAddressCREA = DetourVtable(0xA71240, reinterpret_cast<UInt32>(LinkFormHookCREA)); // kVtbl_Creature_GenerateNiNode
+		_MESSAGE("Installed all vtable hooks");
 
 	}
 }
