@@ -13,7 +13,6 @@ namespace SpellFactionItemDistributor
 
 	static void AddMiscItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
 		ref->AddItem(form, nullptr, amount);
-		//AddToCache(ref);
 	}
 
 	static void RemoveItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
@@ -23,7 +22,6 @@ namespace SpellFactionItemDistributor
 	static void AddEquipItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
 		ref->AddItem(form, nullptr, amount);
 		ref->Equip(form, amount, &ref->baseExtraList, 0);
-		//AddToCache(ref);
 	}
 
 	static void AddLevItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
@@ -40,7 +38,6 @@ namespace SpellFactionItemDistributor
 			}
 			itr = itr - 1;
 		}
-		//AddToCache(ref);
 	}
 
 	static void AddSingleSpell(TESObjectREFR* ref, TESForm* form) {
@@ -51,6 +48,7 @@ namespace SpellFactionItemDistributor
 		newSpell->type = spell;
 		newSpell->next = NULL;
 		newVisitor.Append(newSpell);
+		ThisStdCall(0x46ABF0, ref, TESSpellList::kModified_BaseSpellList);
 	}
 
 	static void AddLevSpell(TESObjectREFR* ref, TESForm* form) {
@@ -61,11 +59,15 @@ namespace SpellFactionItemDistributor
 		TESLeveledList* lev = dynamic_cast<TESLeveledList*>(form);
 		TESForm* newForm = lev->CalcElement(level, true, maxLevel - minLevel);
 		SpellItem* spell = dynamic_cast<SpellItem*>(newForm);
-		SpellListVisitor newVisitor = SpellListVisitor(&npc->spellList.spellList);
+		/*SpellListVisitor newVisitor = SpellListVisitor(&npc->spellList.spellList);
 		TESSpellList::Entry* newSpell = (TESSpellList::Entry*)FormHeap_Allocate(sizeof(TESSpellList::Entry));
 		newSpell->type = spell;
 		newSpell->next = NULL;
 		newVisitor.Append(newSpell);
+		ThisStdCall(0x46ABF0, ref, TESSpellList::kModified_BaseSpellList); */
+
+		ThisStdCall(0x46F350, ref, spell);
+		ThisStdCall(0x46ABF0, ref->baseForm, TESSpellList::kModified_BaseSpellList);
 	}
 
 	static void AddToFaction(TESObjectREFR* ref, TESForm* form) {
@@ -79,7 +81,7 @@ namespace SpellFactionItemDistributor
 		newFaction->data = newFactionData;
 		newFaction->next = NULL;
 		newVisitor.Append(newFaction);
-		ThisStdCall(0x4672F0, &npc->actorBaseData, TESActorBaseData::kModified_BaseFactions);
+		ThisStdCall(0x46ABF0, ref, TESActorBaseData::kModified_BaseFactions);
 	}
 
 	static void AddPackage(TESObjectREFR* ref, TESForm* form) {
@@ -90,6 +92,7 @@ namespace SpellFactionItemDistributor
 		newPackageData->package = package;
 		newPackageData->next = NULL;
 		newVisitor.Append(newPackageData);
+		ThisStdCall(0x46ABF0, ref, TESAIForm::kModified_BaseAIData);
 	}
 
 
@@ -188,12 +191,13 @@ namespace SpellFactionItemDistributor
 				}
 			}
 		}
+		AddToCache(ref);
 	}
 
 	static inline std::uint32_t originalAddressNPC;
 	static inline std::uint32_t originalAddressCREA;
 
-	static void __fastcall LinkFormHookNPC(TESObjectREFR* a_ref, void* edx)
+	static void __fastcall GenerateNiNodeHookNPC(TESObjectREFR* a_ref, void* edx)
 	{
 		Manager* manager = Manager::GetSingleton();
 		if (const auto base = a_ref->baseForm) {
@@ -202,13 +206,12 @@ namespace SpellFactionItemDistributor
 			for (SFIDResult result : resultVec) {
 				manager->processedForms.emplace(a_ref->refID);
 				ProcessResult(result);
-				AddToCache(a_ref);
 			}
 		}
 		ThisStdCall(originalAddressNPC, a_ref);
 	}
 
-	static void __fastcall LinkFormHookCREA(TESObjectREFR* a_ref, void* edx)
+	static void __fastcall GenerateNiNodeHookCREA(TESObjectREFR* a_ref, void* edx)
 	{
 		Manager* manager = Manager::GetSingleton();
 		if (const auto base = a_ref->baseForm) {
@@ -217,7 +220,6 @@ namespace SpellFactionItemDistributor
 			for (SFIDResult result : resultVec) {
 				manager->processedForms.emplace(a_ref->refID);
 				ProcessResult(result);
-				AddToCache(a_ref);
 			}
 		}
 		ThisStdCall(originalAddressNPC, a_ref);
@@ -234,8 +236,8 @@ namespace SpellFactionItemDistributor
 	void Install()
 	{
 		_MESSAGE("-HOOKS-");
-		originalAddressNPC = DetourVtable(0xA6FDE8, reinterpret_cast<UInt32>(LinkFormHookNPC)); // kVtbl_Character_GenerateNiNode
-		originalAddressCREA = DetourVtable(0xA71240, reinterpret_cast<UInt32>(LinkFormHookCREA)); // kVtbl_Creature_GenerateNiNode
+		originalAddressNPC = DetourVtable(0xA6FDE8, reinterpret_cast<UInt32>(GenerateNiNodeHookNPC)); // kVtbl_Character_GenerateNiNode
+		originalAddressCREA = DetourVtable(0xA71240, reinterpret_cast<UInt32>(GenerateNiNodeHookCREA)); // kVtbl_Creature_GenerateNiNode
 		_MESSAGE("Installed all vtable hooks");
 
 	}

@@ -52,79 +52,27 @@ namespace SpellFactionItemDistributor
 		}
 	}
 
-	MinMax<float> Transform::get_scale_from_string(const std::string& a_str)
-	{
-		srell::cmatch match;
-		if (srell::regex_search(a_str.c_str(), match, genericRegex)) {
-			return detail::get_min_max(match[1].str());
-		}
-
-		return MinMax<float>{ 0.0f, 0.0f };
-	}
-
-	float Transform::get_random_value(const Input& a_input, float a_min, float a_max)
-	{
-		float value = a_min;
-
-		if (!numeric::essentially_equal(a_min, a_max)) {
-			value = a_input.trueRandom ? SeedRNG().Generate(a_min, a_max) :
-				SeedRNG(a_input.refSeed).Generate(a_min, a_max);
-		}
-
-		if (a_input.clamp) {
-			value = std::clamp(value, a_input.clampMin, a_input.clampMax);
-		}
-
-		return value;
-	}
-
-	Transform::Transform(const std::string& a_str)
-	{
-		// ignore commas within parentheses
-		const auto get_split_transform = [&]() -> std::vector<std::string> {
-			srell::sregex_token_iterator iter(a_str.begin(),
-				a_str.end(),
-				stringRegex,
-				-1);
-			srell::sregex_token_iterator end{};
-			return { iter, end };
-			};
-	}
-
-	void Transform::SetTransform(TESObjectREFR* a_refr) const
-	{
-		
-	}
-
-	bool Transform::IsValid() const
-	{
-		return true;
-	}
-
-	TransformData::TransformData(const Input& a_input) :
+	DistributeData::DistributeData(const Input& a_input) :
 		formToAdd(a_input.formStr),
 		traits(a_input.traitsStr),
 		record(a_input.record),
-		path(a_input.path),
-		transform("")
+		path(a_input.path)
 	{
-		if (traits.trueRandom) {
-			transform.useTrueRandom = true;
-		}
+
 	}
 
-	SwapData::SwapData()
+	DistributeRecordData::DistributeRecordData()
 	{
 		formIDSet = static_cast<std::uint32_t>(0);
 	}
 
-	SwapData::SwapData(FormIDOrSet a_id, const Input& a_input, FormIDOrSet a_baseId) :
+	DistributeRecordData::DistributeRecordData(FormIDOrSet a_id, const Input& a_input, FormIDOrSet a_baseId) :
 		formIDSet(std::move(a_id)),
-		TransformData(a_input),
+		DistributeData(a_input),
 		formIDSetBase(std::move(a_baseId))
 	{}
 
-	std::uint32_t TransformData::GetFormID(const std::string& a_str)
+	std::uint32_t DistributeData::GetFormID(const std::string& a_str)
 	{
 		if (a_str == "ALL") {
 			return 0xFFFFFFFF;
@@ -152,38 +100,7 @@ namespace SpellFactionItemDistributor
 		return 0;
 	}
 
-	void TransformData::GetTransforms(const std::string& a_path, const std::string& a_str, std::function<void(std::uint32_t, TransformData&)> a_func)
-	{
-		const auto formPair = string::split(a_str, "|");
-
-		if (const auto baseFormID = GetFormID(formPair[0]); baseFormID != 0) {
-			const Input input(
-				baseFormID,
-				formPair.size() > 2 ? formPair[2] : std::string{},  // traits
-				a_str,
-				a_path);
-			TransformData transformData(input);
-			a_func(baseFormID, transformData);
-		}
-		else {
-			_ERROR("\t\t\tfailed to process %s (BASE formID not found)", a_str.c_str());
-		}
-	}
-
-	bool TransformData::IsTransformValid(const TESObjectREFR* a_ref) const
-	{
-		if (traits.chance != 100) {
-			const auto rng = traits.trueRandom ? SeedRNG().Generate<std::uint32_t>(0, 100) :
-				SeedRNG(static_cast<std::uint32_t>(a_ref->refID)).Generate<std::uint32_t>(0, 100);
-			if (rng > traits.chance) {
-				return false;
-			}
-		}
-
-		return transform.IsValid();
-	}
-
-	FormIDOrSet SwapData::GetSwapFormID(const std::string& a_str)
+	FormIDOrSet DistributeRecordData::GetSwapFormID(const std::string& a_str)
 	{
 		if (a_str.contains(",")) {
 			FormIDSet  set;
@@ -204,7 +121,7 @@ namespace SpellFactionItemDistributor
 		}
 	}
 
-	bool SwapData::GetSwapBase(const TESObjectREFR* a_ref) const
+	bool DistributeRecordData::GetSwapBase(const TESObjectREFR* a_ref) const
 	{
 
 		if (const auto formID = std::get_if<UInt32>(&formIDSet); formID) {
@@ -226,7 +143,7 @@ namespace SpellFactionItemDistributor
 		}
 	}
 
-	void SwapData::GetFormsAll(const std::string& a_path, const std::string& a_str, std::function<void(std::uint32_t, SwapData&)> a_func)
+	void DistributeRecordData::GetFormsAll(const std::string& a_path, const std::string& a_str, std::function<void(std::uint32_t, DistributeRecordData&)> a_func)
 	{
 		constexpr auto swap_empty = [](const FormIDOrSet& a_set) {
 			if (const auto formID = std::get_if<UInt32>(&a_set); formID) {
@@ -248,7 +165,7 @@ namespace SpellFactionItemDistributor
 					formPair.size() > 2 ? formPair[2] : std::string{},  // traits
 					a_str,
 					a_path);
-				SwapData swapData(swapFormID, input, baseFormID);
+				DistributeRecordData swapData(swapFormID, input, baseFormID);
 				a_func(baseFormID, swapData);
 			}
 			else {
@@ -257,7 +174,7 @@ namespace SpellFactionItemDistributor
 		}
 	}
 
-	void SwapData::GetForms(const std::string& a_path, const std::string& a_str, std::function<void(std::uint32_t, SwapData&)> a_func)
+	void DistributeRecordData::GetForms(const std::string& a_path, const std::string& a_str, std::function<void(std::uint32_t, DistributeRecordData&)> a_func)
 	{
 		constexpr auto swap_empty = [](const FormIDOrSet& a_set) {
 			if (const auto formID = std::get_if<UInt32>(&a_set); formID) {
@@ -277,7 +194,7 @@ namespace SpellFactionItemDistributor
 					formPair.size() > 2 ? formPair[2] : std::string{},  // traits
 					a_str,
 					a_path);
-				SwapData swapData(swapFormID, input, baseFormID);
+				DistributeRecordData swapData(swapFormID, input, baseFormID);
 				a_func(baseFormID, swapData);
 			}
 			else {
@@ -292,7 +209,7 @@ namespace SpellFactionItemDistributor
 					formPair.size() > 2 ? formPair[2] : std::string{},  // traits
 					a_str,
 					a_path);
-				SwapData swapData(swapFormID, input, baseFormID);
+				DistributeRecordData swapData(swapFormID, input, baseFormID);
 				a_func(baseFormID, swapData);
 			}
 			else {

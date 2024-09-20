@@ -27,6 +27,8 @@ namespace SpellFactionItemDistributor
 
 		[[nodiscard]] bool IsValid(const FormIDStr& a_data, TESObjectREFR* refToCheck) const;
 
+		[[nodiscard]] bool IsValidAll(const FormIDStr& a_data, TESObjectREFR* refToCheck) const;
+
 		// members
 		TESObjectREFR* ref;
 		TESForm* base;
