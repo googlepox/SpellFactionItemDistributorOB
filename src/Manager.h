@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SwapData.h"
+#include "DistributeData.h"
 #include "Defs.h"
 
 namespace SpellFactionItemDistributor

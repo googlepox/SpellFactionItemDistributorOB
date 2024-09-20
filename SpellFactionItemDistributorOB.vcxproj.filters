@@ -50,7 +50,7 @@
     <ClCompile Include="..\obse\obse\Script.cpp">
       <Filter>obse</Filter>
     </ClCompile>
-    <ClCompile Include="src\SwapData.cpp" />
+    <ClCompile Include="src\DistributeData.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Defs.h" />
@@ -134,7 +134,10 @@
     <ClInclude Include="lib\srell.hpp">
       <Filter>lib</Filter>
     </ClInclude>
-    <ClInclude Include="src\SwapData.h" />
+    <ClInclude Include="src\DistributeData.h" />
+    <ClInclude Include="lib\boost\trim.hpp">
+      <Filter>lib\boost</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def" />
@@ -151,6 +154,9 @@
     </Filter>
     <Filter Include="lib\detail">
       <UniqueIdentifier>{569b02dc-0dfc-47b5-b66a-a49e6ba1bc08}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="lib\boost">
+      <UniqueIdentifier>{a1c149af-0776-4747-8770-7636347f2ff5}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

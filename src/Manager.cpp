@@ -1,6 +1,6 @@
 #include "Manager.h"
 #include "fstream"
-#include "boost_1_86_0/boost/algorithm/string/trim.hpp"
+#include "lib/boost/trim.hpp"
 
 extern OBSEScriptInterface* g_script;
 

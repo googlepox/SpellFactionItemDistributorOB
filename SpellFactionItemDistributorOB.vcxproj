@@ -137,7 +137,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="src\Hooks.cpp" />
     <ClCompile Include="src\Manager.cpp" />
-    <ClCompile Include="src\SwapData.cpp" />
+    <ClCompile Include="src\DistributeData.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\obse\obse\GameActorValues.h" />
@@ -157,6 +157,7 @@
     <ClInclude Include="..\obse\obse\Script.h" />
     <ClInclude Include="..\obse\obse\Utilities.h" />
     <ClInclude Include="..\obse\obse_common\SafeWrite.h" />
+    <ClInclude Include="lib\boost\trim.hpp" />
     <ClInclude Include="lib\detail\SimpleIni.h" />
     <ClInclude Include="lib\detail\XoshiroCpp.hpp" />
     <ClInclude Include="lib\distribution.hpp" />
@@ -169,7 +170,7 @@
     <ClInclude Include="src\Defs.h" />
     <ClInclude Include="src\Hooks.h" />
     <ClInclude Include="src\Manager.h" />
-    <ClInclude Include="src\SwapData.h" />
+    <ClInclude Include="src\DistributeData.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\obse\obse\GameRTTI_1_2_416.inl" />
