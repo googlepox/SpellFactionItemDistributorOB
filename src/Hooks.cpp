@@ -59,14 +59,12 @@ namespace SpellFactionItemDistributor
 		TESLeveledList* lev = dynamic_cast<TESLeveledList*>(form);
 		TESForm* newForm = lev->CalcElement(level, true, maxLevel - minLevel);
 		SpellItem* spell = dynamic_cast<SpellItem*>(newForm);
-		/*SpellListVisitor newVisitor = SpellListVisitor(&npc->spellList.spellList);
+		SpellListVisitor newVisitor = SpellListVisitor(&npc->spellList.spellList);
 		TESSpellList::Entry* newSpell = (TESSpellList::Entry*)FormHeap_Allocate(sizeof(TESSpellList::Entry));
 		newSpell->type = spell;
 		newSpell->next = NULL;
 		newVisitor.Append(newSpell);
-		ThisStdCall(0x46ABF0, ref, TESSpellList::kModified_BaseSpellList); */
-
-		ThisStdCall(0x46F350, ref, spell);
+		ThisStdCall(0x46ABF0, ref, TESSpellList::kModified_BaseSpellList);
 		ThisStdCall(0x46ABF0, ref->baseForm, TESSpellList::kModified_BaseSpellList);
 	}
 
