@@ -13,6 +13,7 @@ namespace SpellFactionItemDistributor
 
 	static void AddMiscItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
 		ref->AddItem(form, nullptr, amount);
+		AddToCache(ref);
 	}
 
 	static void RemoveItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
@@ -22,6 +23,7 @@ namespace SpellFactionItemDistributor
 	static void AddEquipItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
 		ref->AddItem(form, nullptr, amount);
 		ref->Equip(form, amount, &ref->baseExtraList, 0);
+		AddToCache(ref);
 	}
 
 	static void AddLevItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
@@ -38,6 +40,7 @@ namespace SpellFactionItemDistributor
 			}
 			itr = itr - 1;
 		}
+		AddToCache(ref);
 	}
 
 	static void AddSingleSpell(TESObjectREFR* ref, TESForm* form) {
@@ -189,7 +192,6 @@ namespace SpellFactionItemDistributor
 				}
 			}
 		}
-		AddToCache(ref);
 	}
 
 	static inline std::uint32_t originalAddressNPC;
@@ -235,7 +237,7 @@ namespace SpellFactionItemDistributor
 	{
 		_MESSAGE("-HOOKS-");
 		originalAddressNPC = DetourVtable(0xA6FDE8, reinterpret_cast<UInt32>(GenerateNiNodeHookNPC)); // kVtbl_Character_GenerateNiNode
-		originalAddressCREA = DetourVtable(0xA71240, reinterpret_cast<UInt32>(GenerateNiNodeHookCREA)); // kVtbl_Creature_GenerateNiNode
+		//originalAddressCREA = DetourVtable(0xA71240, reinterpret_cast<UInt32>(GenerateNiNodeHookCREA)); // kVtbl_Creature_GenerateNiNode temporarily disabled due to crashes
 		_MESSAGE("Installed all vtable hooks");
 
 	}

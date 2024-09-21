@@ -140,7 +140,7 @@ namespace SpellFactionItemDistributor
 				return isExclusion;
 			}
 			else {
-				std::string editorID = (a_cell->GetEditorID());
+				std::string editorID = (a_cell->GetEditorID2());
 				std::transform(newKey.begin(), newKey.end(), newKey.begin(), tolower);
 				std::transform(editorID.begin(), editorID.end(), editorID.begin(), tolower);
 				std::string cStrKey = newKey.c_str();
@@ -189,7 +189,31 @@ namespace SpellFactionItemDistributor
 		else {
 			return false;
 		}
+	}
 
+	static bool HasKeywordName(TESObjectREFR* ref, const FormIDStr& a_keyword, bool isExclusion)
+	{
+		if (ref) {
+			std::string newKey = std::get<std::string>(a_keyword);
+			std::string editorID;
+			if (ref->baseForm) {
+				editorID = (ref->baseForm->GetName());
+			}
+			else {
+				editorID = (ref->GetName());
+			}
+			std::transform(newKey.begin(), newKey.end(), newKey.begin(), tolower);
+			std::transform(editorID.begin(), editorID.end(), editorID.begin(), tolower);
+			std::string cStrKey = newKey.c_str();
+			std::string cStrEditorID = editorID.c_str();
+			if (cStrEditorID.find(cStrKey.c_str()) != std::string::npos) {
+				return !isExclusion;
+			}
+			return isExclusion;
+		}
+		else {
+			return false;
+		}
 	}
 
 	static bool HasKeywordRace(TESObjectREFR* ref, const FormIDStr& a_keyword, bool isExclusion)
@@ -362,6 +386,9 @@ namespace SpellFactionItemDistributor
 			}
 			else if (conditionType[0] == "Item") {
 				return HasKeywordItem(refToCheck, newData, isExclusion);
+			}
+			else if (conditionType[0] == "Name") {
+				return HasKeywordName(refToCheck, newData, isExclusion);
 			}
 			else {
 				return false;
@@ -568,7 +595,6 @@ namespace SpellFactionItemDistributor
 						}
 					}
 					else if (string::iequals(section, "Factions")) {
-						_MESSAGE("it's a faction section");
 						if (!values.empty()) {
 							_MESSAGE("\t\t\t%u factions found", values.size());
 							for (const auto& key : values) {
@@ -613,7 +639,7 @@ namespace SpellFactionItemDistributor
 		_MESSAGE("-CONFLICTS-");
 
 		// TODO
-
+		/*
 		const auto log_conflicts = [&]<typename T>(std::string_view a_type, const FormMap<T>&a_map) {
 			if (a_map.empty()) {
 				return;
@@ -648,7 +674,7 @@ namespace SpellFactionItemDistributor
 		log_conflicts("Equippables", allEquipment);
 		log_conflicts("Spells", allSpells);
 		log_conflicts("Factions", allFactions);
-		log_conflicts("Packages", allPackages);
+		log_conflicts("Packages", allPackages); */
 
 		_MESSAGE("-END-");
 	}
@@ -810,10 +836,9 @@ namespace SpellFactionItemDistributor
 		if (const auto it = cachedForms.find(a_ref->refID); it == cachedForms.end()) {
 			return SFIDResult;
 		}
-		/*
 		else if (!string::iequals(formType, "Items") ||  !string::iequals(formType, "Equippables")) {
 			return SFIDResult;
-		} */
+		}
 		else {
 			return { nullptr, empty };
 		}
