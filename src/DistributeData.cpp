@@ -202,6 +202,7 @@ namespace SpellFactionItemDistributor
 			}
 		}
 		else if (formPair[0] == "ALL") {
+			_MESSAGE("should trigger");
 			const auto baseFormID = GetFormID(formPair[0]);
 			if (const auto swapFormID = GetSwapFormID(formPair[1]); !swap_empty(swapFormID)) {
 				const Input input(

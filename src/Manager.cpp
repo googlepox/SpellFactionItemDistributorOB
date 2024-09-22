@@ -731,6 +731,127 @@ namespace SpellFactionItemDistributor
 		return { nullptr, empty };
 	}
 
+	SFIDResult Manager::GetBaseAll(TESObjectREFR* a_ref, TESForm* a_base, FormMap<SwapDataVec> forms, FormMap<SwapDataConditional> conditionalForms, FormMap<SwapDataConditional> conditionalFormsAll, std::string formType)
+	{
+		DistributeRecordData newSwapData;
+		FormIDSet newSet;
+		if (const auto it = forms.find(a_ref->refID); it != forms.end()) {
+			newSet.reserve(it->second.size());
+			for (DistributeRecordData swapData : it->second | std::ranges::views::reverse) {
+				newSwapData = swapData;
+				if (it->second.size() > 1) {
+					for (auto swapItem : it->second) {
+						if (std::holds_alternative<UInt32>(swapItem.formToAdd)) {
+							newSet.emplace(std::get<UInt32>(swapItem.formToAdd));
+						}
+						else if (std::holds_alternative<FormIDSet>(swapItem.formToAdd)) {
+							for (auto setItem : std::get<FormIDSet>(swapItem.formToAdd)) {
+								newSet.emplace(setItem);
+							}
+						}
+					}
+				}
+				if (std::holds_alternative<UInt32>(swapData.formToAdd)) {
+					newSet.emplace(std::get<UInt32>(swapData.formToAdd));
+				}
+				else if (std::holds_alternative<FormIDSet>(swapData.formToAdd)) {
+					for (auto setItem : std::get<FormIDSet>(swapData.formToAdd)) {
+						newSet.emplace(setItem);
+					}
+				}
+			}
+		}
+		if (const auto it = forms.find(a_base->refID); it != forms.end()) {
+			newSet.reserve(it->second.size());
+			for (DistributeRecordData swapData : it->second | std::ranges::views::reverse) {
+				newSwapData = swapData;
+				if (it->second.size() > 1) {
+					for (auto swapItem : it->second) {
+						if (std::holds_alternative<UInt32>(swapItem.formToAdd)) {
+							newSet.emplace(std::get<UInt32>(swapItem.formToAdd));
+						}
+						else if (std::holds_alternative<FormIDSet>(swapItem.formToAdd)) {
+							for (auto setItem : std::get<FormIDSet>(swapItem.formToAdd)) {
+								newSet.emplace(setItem);
+							}
+						}
+					}
+				}
+				if (std::holds_alternative<UInt32>(swapData.formToAdd)) {
+					newSet.emplace(std::get<UInt32>(swapData.formToAdd));
+				}
+				else if (std::holds_alternative<FormIDSet>(swapData.formToAdd)) {
+					for (auto setItem : std::get<FormIDSet>(swapData.formToAdd)) {
+						newSet.emplace(setItem);
+					}
+				}
+			}
+		}
+		if (const auto it = conditionalForms.find(a_ref->refID); it != conditionalForms.end()) {
+			const ConditionalInput input(a_ref, a_base);
+			const auto             result = std::ranges::find_if(it->second, [&](const auto& a_data) {
+				return input.IsValidAll(a_data.first, a_ref);
+				});
+
+			if (result != it->second.end()) {
+				for (DistributeRecordData swapData : result->second | std::ranges::views::reverse) {
+					newSwapData = swapData;
+					if (std::holds_alternative<UInt32>(swapData.formToAdd)) {
+						newSet.emplace(std::get<UInt32>(swapData.formToAdd));
+					}
+					else if (std::holds_alternative<FormIDSet>(swapData.formToAdd)) {
+						for (auto setItem : std::get<FormIDSet>(swapData.formToAdd)) {
+							newSet.emplace(setItem);
+						}
+					}
+				}
+			}
+		}
+		if (const auto it = conditionalForms.find(a_base->refID); it != conditionalForms.end()) {
+			const ConditionalInput input(a_ref, a_base);
+			const auto             result = std::ranges::find_if(it->second, [&](const auto& a_data) {
+				return input.IsValidAll(a_data.first, a_ref);
+				});
+
+			if (result != it->second.end()) {
+				for (DistributeRecordData swapData : result->second | std::ranges::views::reverse) {
+					newSwapData = swapData;
+					if (std::holds_alternative<UInt32>(swapData.formToAdd)) {
+						newSet.emplace(std::get<UInt32>(swapData.formToAdd));
+					}
+					else if (std::holds_alternative<FormIDSet>(swapData.formToAdd)) {
+						for (auto setItem : std::get<FormIDSet>(swapData.formToAdd)) {
+							newSet.emplace(setItem);
+						}
+					}
+				}
+			}
+		}
+		if (const auto it = conditionalFormsAll.find(static_cast<std::uint32_t>(0xFFFFFFFF)); it != conditionalFormsAll.end()) {
+			const ConditionalInput input(a_ref, a_base);
+			const auto             result = std::ranges::find_if(it->second, [&](const auto& a_data) {
+				return input.IsValidAll(a_data.first, a_ref);
+				});
+
+			if (result != it->second.end()) {
+				for (DistributeRecordData swapData : result->second | std::ranges::views::reverse) {
+					newSwapData = swapData;
+					if (std::holds_alternative<UInt32>(swapData.formToAdd)) {
+						newSet.emplace(std::get<UInt32>(swapData.formToAdd));
+					}
+					else if (std::holds_alternative<FormIDSet>(swapData.formToAdd)) {
+						for (auto setItem : std::get<FormIDSet>(swapData.formToAdd)) {
+							newSet.emplace(setItem);
+						}
+					}
+				}
+			}
+		}
+		newSwapData.formToAdd = newSet;
+		newSwapData.formIDSet = newSet;
+		return { a_ref, newSwapData };
+	}
+
 	void Manager::InsertLeveledItemRef(const TESObjectREFR* a_refr)
 	{
 		swappedLeveledItemRefs.insert(a_refr->refID);
@@ -792,7 +913,43 @@ namespace SpellFactionItemDistributor
 
 		const auto get_swap_base = [a_ref](const TESForm* a_form, const FormMap<SwapDataVec>& a_map) -> SFIDResult {
 			if (const auto it = a_map.find(a_form->refID); it != a_map.end()) {
+				FormIDSet newSet;
+				newSet.reserve(it->second.size());
 				for (DistributeRecordData swapData : it->second | std::ranges::views::reverse) {
+					if (it->second.size() > 1) {
+						for (auto swapItem : it->second) {
+							if (std::holds_alternative<UInt32>(swapItem.formToAdd)) {
+								newSet.emplace(std::get<UInt32>(swapItem.formToAdd));
+							}
+							else if (std::holds_alternative<FormIDSet>(swapItem.formToAdd)) {
+								for (auto setItem : std::get<FormIDSet>(swapItem.formToAdd)) {
+									newSet.emplace(setItem);
+								}
+							}
+						}
+					}
+					if (const auto it = a_map.find(static_cast<UInt32>(0xFFFFFFFF)); it != a_map.end()) {
+						for (DistributeRecordData swapData : it->second | std::ranges::views::reverse) {
+							if (std::holds_alternative<UInt32>(swapData.formToAdd)) {
+								newSet.emplace(std::get<UInt32>(swapData.formToAdd));
+							}
+							else if (std::holds_alternative<FormIDSet>(swapData.formToAdd)) {
+								for (auto setItem : std::get<FormIDSet>(swapData.formToAdd)) {
+									newSet.emplace(setItem);
+								}
+							}
+						}
+					}
+					if (std::holds_alternative<UInt32>(swapData.formToAdd)) {
+						newSet.emplace(std::get<UInt32>(swapData.formToAdd));
+					}
+					else if (std::holds_alternative<FormIDSet>(swapData.formToAdd)) {
+						for (auto setItem : std::get<FormIDSet>(swapData.formToAdd)) {
+							newSet.emplace(setItem);
+						}
+					}
+					swapData.formToAdd = newSet;
+					swapData.formIDSet = newSet;
 					if (!swapData.GetSwapBase(a_ref)) {
 						return { a_ref, swapData };
 					}
@@ -815,19 +972,9 @@ namespace SpellFactionItemDistributor
 			return { nullptr, empty };
 			};
 
-		SFIDResult SFIDResult{ a_ref, empty };
+		SFIDResult SFIDResult{ nullptr, empty };
 
-		if (a_ref->refID < 0xFF000000) {
-			SFIDResult = get_swap_base(a_base, allForms);
-		}
-
-		if (!SFIDResult.first) {
-			SFIDResult = GetConditionalBase(a_ref, a_base, allFormsConditional, formType);
-		}
-
-		if (!SFIDResult.first) {
-			SFIDResult = GetConditionalBase(a_ref, a_base, applyToAllForms, formType);
-		}
+		SFIDResult = GetBaseAll(a_ref, a_base, allForms, allFormsConditional, applyToAllForms, formType);
 
 		if (!SFIDResult.first) {
 			return { nullptr, empty };

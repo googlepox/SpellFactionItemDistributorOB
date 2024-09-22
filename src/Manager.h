@@ -56,6 +56,8 @@ namespace SpellFactionItemDistributor
 		std::vector<SFIDResult> GetAllSwapData(TESObjectREFR* a_ref, TESForm* a_base);
 		SFIDResult      GetConditionalBase(TESObjectREFR* a_ref, TESForm* a_base, FormMap<SwapDataConditional> conditionalForms, std::string formType);
 
+		SFIDResult GetBaseAll(TESObjectREFR* a_ref, TESForm* a_base, FormMap<SwapDataVec> forms, FormMap<SwapDataConditional> conditionalForms, FormMap<SwapDataConditional> conditionalFormsAll, std::string formType);
+
 		void InsertLeveledItemRef(const TESObjectREFR* a_refr);
 		bool IsLeveledItemRefSwapped(const TESObjectREFR* a_refr) const;
 

@@ -44,45 +44,48 @@ namespace SpellFactionItemDistributor
 	}
 
 	static void AddSingleSpell(TESObjectREFR* ref, TESForm* form) {
-		TESActorBase* npc = dynamic_cast<TESActorBase*>(ref->baseForm);
-		SpellItem* spell = dynamic_cast<SpellItem*>(form);
-		SpellListVisitor newVisitor = SpellListVisitor(&npc->spellList.spellList);
+		TESActorBase* npc = OBLIVION_CAST(ref->baseForm, TESForm, TESActorBase);
+		SpellItem* spell = OBLIVION_CAST(form, TESForm, SpellItem);
+		/*SpellListVisitor newVisitor = SpellListVisitor(&npc->spellList.spellList);
 		TESSpellList::Entry* newSpell = (TESSpellList::Entry*)FormHeap_Allocate(sizeof(TESSpellList::Entry));
 		newSpell->type = spell;
 		newSpell->next = NULL;
-		newVisitor.Append(newSpell);
-		ThisStdCall(0x46ABF0, ref, TESSpellList::kModified_BaseSpellList);
+		newVisitor.Append(newSpell); */
+		ThisStdCall(0x46F350, &npc->spellList, spell);
+		ThisStdCall(0x46ABF0, &npc->spellList, TESSpellList::kModified_BaseSpellList);
 	}
 
 	static void AddLevSpell(TESObjectREFR* ref, TESForm* form) {
-		TESActorBase* npc = dynamic_cast<TESActorBase*>(ref->baseForm);
+		TESActorBase* npc = OBLIVION_CAST(ref->baseForm, TESForm, TESActorBase);
 		SInt16 level = npc->actorBaseData.level;
 		SInt16 maxLevel = npc->actorBaseData.maxLevel;
 		SInt16 minLevel = npc->actorBaseData.minLevel;
-		TESLeveledList* lev = dynamic_cast<TESLeveledList*>(form);
+		TESLeveledList* lev = OBLIVION_CAST(form, TESForm, TESLeveledList);
 		TESForm* newForm = lev->CalcElement(level, true, maxLevel - minLevel);
-		SpellItem* spell = dynamic_cast<SpellItem*>(newForm);
-		SpellListVisitor newVisitor = SpellListVisitor(&npc->spellList.spellList);
+		SpellItem* spell = OBLIVION_CAST(newForm, TESForm, SpellItem);
+		/*SpellListVisitor newVisitor = SpellListVisitor(&npc->spellList.spellList);
 		TESSpellList::Entry* newSpell = (TESSpellList::Entry*)FormHeap_Allocate(sizeof(TESSpellList::Entry));
 		newSpell->type = spell;
 		newSpell->next = NULL;
-		newVisitor.Append(newSpell);
+		newVisitor.Append(newSpell); */
+		ThisStdCall(0x46F350, &(npc->spellList), TESSpellList::kModified_BaseSpellList);
 		ThisStdCall(0x46ABF0, ref, TESSpellList::kModified_BaseSpellList);
 		ThisStdCall(0x46ABF0, ref->baseForm, TESSpellList::kModified_BaseSpellList);
 	}
 
 	static void AddToFaction(TESObjectREFR* ref, TESForm* form) {
-		TESActorBase* npc = dynamic_cast<TESActorBase*>(ref->baseForm);
-		TESFaction* faction = dynamic_cast<TESFaction*>(form);
-		FactionListVisitor newVisitor = FactionListVisitor(&npc->actorBaseData.factionList);
+		TESActorBase* npc = OBLIVION_CAST(ref->baseForm, TESForm, TESActorBase);
+		TESFaction* faction = OBLIVION_CAST(form, TESForm, TESFaction);
+		/*FactionListVisitor newVisitor = FactionListVisitor(&npc->actorBaseData.factionList);
 		TESActorBaseData::FactionListData* newFactionData = (TESActorBaseData::FactionListData*)FormHeap_Allocate(sizeof(TESActorBaseData::FactionListData));
 		newFactionData->faction = dynamic_cast<TESFaction*>(form);
 		newFactionData->rank = 1;
 		TESActorBaseData::FactionListEntry* newFaction = (TESActorBaseData::FactionListEntry*)FormHeap_Allocate(sizeof(TESActorBaseData::FactionListEntry));
 		newFaction->data = newFactionData;
 		newFaction->next = NULL;
-		newVisitor.Append(newFaction);
-		ThisStdCall(0x46ABF0, ref, TESActorBaseData::kModified_BaseFactions);
+		//newVisitor.(Append(newFaction); */
+		ThisStdCall(0x4675E0, &(npc->actorBaseData), faction, 1);
+		ThisStdCall(0x4672F0, &(npc->actorBaseData), TESActorBaseData::kModified_BaseFactions);
 	}
 
 	static void AddPackage(TESObjectREFR* ref, TESForm* form) {
