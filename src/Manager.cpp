@@ -140,7 +140,7 @@ namespace SpellFactionItemDistributor
 				return isExclusion;
 			}
 			else {
-				std::string editorID = (a_cell->GetEditorID2());
+				std::string editorID = (a_cell->GetEditorName());
 				std::transform(newKey.begin(), newKey.end(), newKey.begin(), tolower);
 				std::transform(editorID.begin(), editorID.end(), editorID.begin(), tolower);
 				std::string cStrKey = newKey.c_str();
@@ -171,10 +171,10 @@ namespace SpellFactionItemDistributor
 			else {
 				std::string editorID;
 				if (ref->baseForm) {
-					editorID = (ref->baseForm->GetEditorID2());
+					editorID = (ref->baseForm->GetEditorName());
 				}
 				else {
-					editorID = (ref->GetEditorID2());
+					editorID = (ref->GetEditorName());
 				}
 				std::transform(newKey.begin(), newKey.end(), newKey.begin(), tolower);
 				std::transform(editorID.begin(), editorID.end(), editorID.begin(), tolower);
@@ -222,7 +222,7 @@ namespace SpellFactionItemDistributor
 			TESActorBase* actor = dynamic_cast<TESActorBase*>(ref->baseForm);
 			TESNPC* npc = dynamic_cast<TESNPC*>(actor);
 			std::string newKey = std::get<std::string>(a_keyword);
-			std::string editorID = (npc->race.race->GetEditorID2());
+			std::string editorID = (npc->race.race->GetEditorName());
 			UInt32 refID = npc->race.race->refID;
 			UInt32 newFormID = std::atoi(newKey.c_str());
 			if (newFormID) {
@@ -232,7 +232,7 @@ namespace SpellFactionItemDistributor
 				return isExclusion;
 			}
 			else {
-				std::string editorID = (ref->baseForm->GetEditorID2());
+				std::string editorID = (ref->baseForm->GetEditorName());
 				std::transform(newKey.begin(), newKey.end(), newKey.begin(), tolower);
 				std::transform(editorID.begin(), editorID.end(), editorID.begin(), tolower);
 				std::string cStrKey = newKey.c_str();
@@ -258,7 +258,7 @@ namespace SpellFactionItemDistributor
 			while (entry && entry->data)
 			{	
 				TESFaction* faction = entry->data->faction;
-				std::string editorID = faction->GetEditorID2();
+				std::string editorID = faction->GetEditorName();
 				std::string refID = std::to_string(faction->refID).c_str();
 				std::string newKey = std::get<std::string>(a_keyword);
 				std::transform(newKey.begin(), newKey.end(), newKey.begin(), tolower);
@@ -289,7 +289,7 @@ namespace SpellFactionItemDistributor
 			TESActorBase* actor = dynamic_cast<TESActorBase*>(ref->baseForm);
 			TESNPC* npc = dynamic_cast<TESNPC*>(actor);
 			std::string newKey = std::get<std::string>(a_keyword);
-			std::string editorID = (npc->npcClass->GetEditorID2());
+			std::string editorID = (npc->npcClass->GetEditorName());
 			UInt32 refID = npc->npcClass->refID;
 			UInt32 newFormID = std::atoi(newKey.c_str());
 			if (newFormID) {
@@ -299,7 +299,7 @@ namespace SpellFactionItemDistributor
 				return isExclusion;
 			}
 			else {
-				std::string editorID = (ref->baseForm->GetEditorID2());
+				std::string editorID = (ref->baseForm->GetEditorName());
 				std::transform(newKey.begin(), newKey.end(), newKey.begin(), tolower);
 				std::transform(editorID.begin(), editorID.end(), editorID.begin(), tolower);
 				std::string cStrKey = newKey.c_str();
@@ -325,7 +325,7 @@ namespace SpellFactionItemDistributor
 			TESContainer::Entry* entry = &cont->list;
 			while (entry && entry->data) {
 				TESForm* form = entry->data->type;
-				std::string editorID = form->GetEditorID2();
+				std::string editorID = form->GetEditorName();
 				UInt32 refID = form->refID;
 				std::string newKey = std::get<std::string>(a_keyword);
 				std::transform(newKey.begin(), newKey.end(), newKey.begin(), tolower);
