@@ -197,10 +197,10 @@ namespace SpellFactionItemDistributor
 			std::string newKey = std::get<std::string>(a_keyword);
 			std::string editorID;
 			if (ref->baseForm) {
-				editorID = (ref->baseForm->GetName());
+				editorID = (ref->baseForm->GetFullName()->name.m_data);
 			}
 			else {
-				editorID = (ref->GetName());
+				editorID = (ref->GetFullName()->name.m_data);
 			}
 			std::transform(newKey.begin(), newKey.end(), newKey.begin(), tolower);
 			std::transform(editorID.begin(), editorID.end(), editorID.begin(), tolower);
@@ -349,12 +349,33 @@ namespace SpellFactionItemDistributor
 		}
 	}
 
+	static bool HasKeywordMod(TESObjectREFR* ref, const FormIDStr& a_keyword, bool isExclusion)
+	{
+		if (ref) {
+			std::string newKey = std::get<std::string>(a_keyword);
+			UInt8 modIndex = ref->baseForm->GetModIndex();
+			std::string modName = (*g_dataHandler)->GetNthModName(modIndex);
+			std::transform(newKey.begin(), newKey.end(), newKey.begin(), tolower);
+			std::transform(modName.begin(), modName.end(), modName.begin(), tolower);
+			std::string cStrKey = newKey.c_str();
+			std::string cStrModName = modName.c_str();
+			if (cStrModName.find(cStrKey.c_str()) != std::string::npos) {
+				return !isExclusion;
+			}
+			return isExclusion;
+		}
+		else {
+			return false;
+		}
+	}
+
 	bool ConditionalInput::IsValid(const FormIDStr& a_data, TESObjectREFR* refToCheck) const
 	{
 		if (refToCheck) {
 			FormIDStr newData = a_data;
 			UInt32 formID;
 			std::string formString = std::get<std::string>(a_data);
+			boost::trim(formString);
 			bool isExclusion = false;
 			if (formString.find('-') != std::string::npos) {
 				std::string::iterator end_pos = std::remove(formString.begin(), formString.end(), '-');
@@ -362,6 +383,10 @@ namespace SpellFactionItemDistributor
 				isExclusion = true;
 			}
 			std::vector<std::string> conditionType = string::split(formString, ":");
+			boost::trim(conditionType[0]);
+			boost::trim(conditionType[1]);
+			//_MESSAGE("%s", conditionType[0].c_str());
+			//_MESSAGE("%s", conditionType[1].c_str());
 			formID = DistributeRecordData::GetFormID(conditionType[1]);
 			if (formID) {
 				newData = std::to_string(formID);
@@ -390,6 +415,9 @@ namespace SpellFactionItemDistributor
 			else if (conditionType[0] == "Name") {
 				return HasKeywordName(refToCheck, newData, isExclusion);
 			}
+			else if (conditionType[0] == "Mod") {
+				return HasKeywordMod(refToCheck, newData, isExclusion);
+			}
 			else {
 				return false;
 			}
@@ -400,8 +428,7 @@ namespace SpellFactionItemDistributor
 	bool ConditionalInput::IsValidAll(const FormIDStr& a_data, TESObjectREFR* refToCheck) const
 	{
 		if (refToCheck) {
-			FormIDStr newData = a_data;
-			std::string conditionStr = std::get<std::string>(newData);
+			std::string conditionStr = std::get<std::string>(a_data);
 			std::vector<bool> resultVec;
 			if (conditionStr.contains("&")) {
 				auto conditions = string::split(conditionStr, "&");
@@ -685,58 +712,12 @@ namespace SpellFactionItemDistributor
 		}
 	}
 
-	SFIDResult Manager::GetConditionalBase(TESObjectREFR* a_ref, TESForm* a_base, FormMap<SwapDataConditional> conditionalForms, std::string formType)
-	{
-		DistributeRecordData empty;
-
-		if (const auto it = conditionalForms.find(a_ref->refID); it != conditionalForms.end()) {
-			const ConditionalInput input(a_ref, a_base);
-			const auto             result = std::ranges::find_if(it->second, [&](const auto& a_data) {
-				return input.IsValidAll(a_data.first, a_ref);
-				});
-
-			if (result != it->second.end()) {
-				for (DistributeRecordData SwapData : result->second | std::ranges::views::reverse) {
-					return { a_ref, SwapData };
-				}
-			}
-			else {
-				return { nullptr, empty };
-			}
-		}
-		else if (const auto it = conditionalForms.find(a_base->refID); it != conditionalForms.end()) {
-			const ConditionalInput input(a_ref, a_base);
-			const auto             result = std::ranges::find_if(it->second, [&](const auto& a_data) {
-				return input.IsValidAll(a_data.first, a_ref);
-				});
-
-			if (result != it->second.end()) {
-				for (DistributeRecordData SwapData : result->second | std::ranges::views::reverse) {
-					return { a_ref, SwapData };
-				}
-			}
-		}
-		else if (const auto it = conditionalForms.find(static_cast<std::uint32_t>(0xFFFFFFFF)); it != conditionalForms.end()) {
-			const ConditionalInput input(a_ref, a_base);
-			const auto             result = std::ranges::find_if(it->second, [&](const auto& a_data) {
-				return input.IsValidAll(a_data.first, a_ref);
-				});
-
-			if (result != it->second.end()) {
-				for (DistributeRecordData SwapData : result->second | std::ranges::views::reverse) {
-					return { a_ref, SwapData };
-				}
-			}
-		}
-		return { nullptr, empty };
-	}
-
 	SFIDResult Manager::GetBaseAll(TESObjectREFR* a_ref, TESForm* a_base, FormMap<SwapDataVec> forms, FormMap<SwapDataConditional> conditionalForms, FormMap<SwapDataConditional> conditionalFormsAll, std::string formType)
 	{
 		DistributeRecordData newSwapData;
 		FormIDSet newSet;
+		newSet.reserve(2048);
 		if (const auto it = forms.find(a_ref->refID); it != forms.end()) {
-			newSet.reserve(it->second.size());
 			for (DistributeRecordData swapData : it->second | std::ranges::views::reverse) {
 				newSwapData = swapData;
 				if (it->second.size() > 1) {
@@ -762,7 +743,6 @@ namespace SpellFactionItemDistributor
 			}
 		}
 		if (const auto it = forms.find(a_base->refID); it != forms.end()) {
-			newSet.reserve(it->second.size());
 			for (DistributeRecordData swapData : it->second | std::ranges::views::reverse) {
 				newSwapData = swapData;
 				if (it->second.size() > 1) {
@@ -788,60 +768,54 @@ namespace SpellFactionItemDistributor
 			}
 		}
 		if (const auto it = conditionalForms.find(a_ref->refID); it != conditionalForms.end()) {
-			const ConditionalInput input(a_ref, a_base);
-			const auto             result = std::ranges::find_if(it->second, [&](const auto& a_data) {
-				return input.IsValidAll(a_data.first, a_ref);
-				});
-
-			if (result != it->second.end()) {
-				for (DistributeRecordData swapData : result->second | std::ranges::views::reverse) {
-					newSwapData = swapData;
-					if (std::holds_alternative<UInt32>(swapData.formToAdd)) {
-						newSet.emplace(std::get<UInt32>(swapData.formToAdd));
-					}
-					else if (std::holds_alternative<FormIDSet>(swapData.formToAdd)) {
-						for (auto setItem : std::get<FormIDSet>(swapData.formToAdd)) {
-							newSet.emplace(setItem);
+			for (auto vecData : it->second) {
+				const ConditionalInput input(a_ref, a_base);
+				if (input.IsValidAll(vecData.first, a_ref)) {
+					for (DistributeRecordData swapData : vecData.second | std::ranges::views::reverse) {
+						newSwapData = swapData;
+						if (std::holds_alternative<UInt32>(swapData.formToAdd)) {
+							newSet.emplace(std::get<UInt32>(swapData.formToAdd));
+						}
+						else if (std::holds_alternative<FormIDSet>(swapData.formToAdd)) {
+							for (auto setItem : std::get<FormIDSet>(swapData.formToAdd)) {
+								newSet.emplace(setItem);
+							}
 						}
 					}
 				}
 			}
 		}
 		if (const auto it = conditionalForms.find(a_base->refID); it != conditionalForms.end()) {
-			const ConditionalInput input(a_ref, a_base);
-			const auto             result = std::ranges::find_if(it->second, [&](const auto& a_data) {
-				return input.IsValidAll(a_data.first, a_ref);
-				});
-
-			if (result != it->second.end()) {
-				for (DistributeRecordData swapData : result->second | std::ranges::views::reverse) {
-					newSwapData = swapData;
-					if (std::holds_alternative<UInt32>(swapData.formToAdd)) {
-						newSet.emplace(std::get<UInt32>(swapData.formToAdd));
-					}
-					else if (std::holds_alternative<FormIDSet>(swapData.formToAdd)) {
-						for (auto setItem : std::get<FormIDSet>(swapData.formToAdd)) {
-							newSet.emplace(setItem);
+			for (auto vecData : it->second) {
+				const ConditionalInput input(a_ref, a_base);
+				if (input.IsValidAll(vecData.first, a_ref)) {
+					for (DistributeRecordData swapData : vecData.second | std::ranges::views::reverse) {
+						newSwapData = swapData;
+						if (std::holds_alternative<UInt32>(swapData.formToAdd)) {
+							newSet.emplace(std::get<UInt32>(swapData.formToAdd));
+						}
+						else if (std::holds_alternative<FormIDSet>(swapData.formToAdd)) {
+							for (auto setItem : std::get<FormIDSet>(swapData.formToAdd)) {
+								newSet.emplace(setItem);
+							}
 						}
 					}
 				}
 			}
 		}
 		if (const auto it = conditionalFormsAll.find(static_cast<std::uint32_t>(0xFFFFFFFF)); it != conditionalFormsAll.end()) {
-			const ConditionalInput input(a_ref, a_base);
-			const auto             result = std::ranges::find_if(it->second, [&](const auto& a_data) {
-				return input.IsValidAll(a_data.first, a_ref);
-				});
-
-			if (result != it->second.end()) {
-				for (DistributeRecordData swapData : result->second | std::ranges::views::reverse) {
-					newSwapData = swapData;
-					if (std::holds_alternative<UInt32>(swapData.formToAdd)) {
-						newSet.emplace(std::get<UInt32>(swapData.formToAdd));
-					}
-					else if (std::holds_alternative<FormIDSet>(swapData.formToAdd)) {
-						for (auto setItem : std::get<FormIDSet>(swapData.formToAdd)) {
-							newSet.emplace(setItem);
+			for (auto vecData : it->second) {
+				const ConditionalInput input(a_ref, a_base);
+				if (input.IsValidAll(vecData.first, a_ref)) {
+					for (DistributeRecordData swapData : vecData.second | std::ranges::views::reverse) {
+						newSwapData = swapData;
+						if (std::holds_alternative<UInt32>(swapData.formToAdd)) {
+							newSet.emplace(std::get<UInt32>(swapData.formToAdd));
+						}
+						else if (std::holds_alternative<FormIDSet>(swapData.formToAdd)) {
+							for (auto setItem : std::get<FormIDSet>(swapData.formToAdd)) {
+								newSet.emplace(setItem);
+							}
 						}
 					}
 				}
