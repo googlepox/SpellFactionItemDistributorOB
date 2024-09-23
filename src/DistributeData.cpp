@@ -29,24 +29,27 @@ namespace SpellFactionItemDistributor
 	Traits::Traits(const std::string& a_str)
 	{
 		if (dist::is_valid_entry(a_str)) {
-			if (a_str.contains("chance")) {
-				if (a_str.contains("R")) {
-					trueRandom = true;
+			auto strTraits = string::split(a_str, ",");
+			for (auto str : strTraits) {
+				if (str.contains("chance")) {
+					if (str.contains("R")) {
+						trueRandom = true;
+					}
+					if (srell::cmatch match; srell::regex_search(str.c_str(), match, genericRegex)) {
+						chance = string::to_num<std::uint32_t>(match[1].str());
+					}
 				}
-				if (srell::cmatch match; srell::regex_search(a_str.c_str(), match, genericRegex)) {
-					chance = string::to_num<std::uint32_t>(match[1].str());
-				}
-			}
 
-			if (a_str.contains("amount")) {
-				if (srell::cmatch match; srell::regex_search(a_str.c_str(), match, genericRegex)) {
-					amount = string::to_num<std::uint32_t>(match[1].str());
+				if (str.contains("amount")) {
+					if (srell::cmatch match; srell::regex_search(str.c_str(), match, genericRegex)) {
+						amount = string::to_num<std::uint32_t>(match[1].str());
+					}
 				}
-			}
 
-			if (a_str.contains("remove")) {
-				if (srell::cmatch match; srell::regex_search(a_str.c_str(), match, genericRegex)) {
-					remove = true;
+				if (str.contains("remove")) {
+					if (srell::cmatch match; srell::regex_search(str.c_str(), match, genericRegex)) {
+						remove = true;
+					}
 				}
 			}
 		}

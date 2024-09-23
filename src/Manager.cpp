@@ -10,7 +10,7 @@ namespace SpellFactionItemDistributor
 		if (formString == "Forms") return form;
 		if (formString == "Spells") return spell;
 		if (formString == "Factions") return faction;
-		if (formString == "Equippables") return equippable;
+		if (formString == "Equipment") return equippable;
 		if (formString == "Packages") return package;
 		if (formString == "Items") return item;
 	}
@@ -255,12 +255,12 @@ namespace SpellFactionItemDistributor
 			TESActorBase* actor = dynamic_cast<TESActorBase*>(ref->baseForm);
 			TESNPC* npc = dynamic_cast<TESNPC*>(actor);
 			TESActorBaseData::FactionListEntry* entry = &npc->actorBaseData.factionList;
+			std::string newKey = std::get<std::string>(a_keyword);
 			while (entry && entry->data)
 			{	
 				TESFaction* faction = entry->data->faction;
 				std::string editorID = faction->GetEditorName();
 				std::string refID = std::to_string(faction->refID).c_str();
-				std::string newKey = std::get<std::string>(a_keyword);
 				std::transform(newKey.begin(), newKey.end(), newKey.begin(), tolower);
 				std::transform(editorID.begin(), editorID.end(), editorID.begin(), tolower);
 				std::string cStrKey = newKey.c_str();
@@ -712,6 +712,48 @@ namespace SpellFactionItemDistributor
 		}
 	}
 
+	SFIDResult Manager::GetConditionalBase(TESObjectREFR* a_ref, TESForm* a_base, FormMap<SwapDataConditional> conditionalForms, std::string formType)
+	{
+		DistributeRecordData empty;
+		if (const auto it = conditionalForms.find(a_ref->refID); it != conditionalForms.end()) {
+			const ConditionalInput input(a_ref, a_base);
+			const auto             result = std::ranges::find_if(it->second, [&](const auto& a_data) {
+				return input.IsValidAll(a_data.first, a_ref);
+				});
+			if (result != it->second.end()) {
+				for (DistributeRecordData SwapData : result->second | std::ranges::views::reverse) {
+					return { a_ref, SwapData };
+				}
+			}
+			else {
+				return { nullptr, empty };
+			}
+		}
+		else if (const auto it = conditionalForms.find(a_base->refID); it != conditionalForms.end()) {
+			const ConditionalInput input(a_ref, a_base);
+			const auto             result = std::ranges::find_if(it->second, [&](const auto& a_data) {
+				return input.IsValidAll(a_data.first, a_ref);
+				});
+			if (result != it->second.end()) {
+				for (DistributeRecordData SwapData : result->second | std::ranges::views::reverse) {
+					return { a_ref, SwapData };
+				}
+			}
+		}
+		else if (const auto it = conditionalForms.find(static_cast<std::uint32_t>(0xFFFFFFFF)); it != conditionalForms.end()) {
+			const ConditionalInput input(a_ref, a_base);
+			const auto             result = std::ranges::find_if(it->second, [&](const auto& a_data) {
+				return input.IsValidAll(a_data.first, a_ref);
+				});
+			if (result != it->second.end()) {
+				for (DistributeRecordData SwapData : result->second | std::ranges::views::reverse) {
+					return { a_ref, SwapData };
+				}
+			}
+		}
+		return { nullptr, empty };
+	}
+
 	SFIDResult Manager::GetBaseAll(TESObjectREFR* a_ref, TESForm* a_base, FormMap<SwapDataVec> forms, FormMap<SwapDataConditional> conditionalForms, FormMap<SwapDataConditional> conditionalFormsAll, std::string formType)
 	{
 		DistributeRecordData newSwapData;
@@ -879,10 +921,10 @@ namespace SpellFactionItemDistributor
 		}
 
 		if (const auto it = cachedForms.find(a_ref->refID); it != cachedForms.end()) {
-			/*
-			if (string::iequals(formType, "Items") || string::iequals(formType, "Equippables")) {
+			
+			if (string::iequals(formType, "Items") || string::iequals(formType, "Equipment")) {
 				return { nullptr, empty };
-			} */
+			}
 		}
 
 		const auto get_swap_base = [a_ref](const TESForm* a_form, const FormMap<SwapDataVec>& a_map) -> SFIDResult {
@@ -957,7 +999,7 @@ namespace SpellFactionItemDistributor
 		if (const auto it = cachedForms.find(a_ref->refID); it == cachedForms.end()) {
 			return SFIDResult;
 		}
-		else if (!string::iequals(formType, "Items") ||  !string::iequals(formType, "Equippables")) {
+		else if (!string::iequals(formType, "Items") ||  !string::iequals(formType, "Equipment")) {
 			return SFIDResult;
 		}
 		else {
@@ -968,17 +1010,17 @@ namespace SpellFactionItemDistributor
 	std::vector<SFIDResult> Manager::GetAllSwapData(TESObjectREFR* a_ref, TESForm* a_base) {
 		std::vector<SFIDResult> resultVec;
 
+		if (allFactions.size() > 0 || allFactionsConditional.size() > 0 || applyToAllFactions.size() > 0) {
+			resultVec.push_back(GetSingleSwapData(a_ref, a_base, "Factions"));
+		}
 		if (allItems.size() > 0 || allItems.size() > 0 || applyToAllItems.size() > 0) {
 			resultVec.push_back(GetSingleSwapData(a_ref, a_base, "Items"));
 		}
 		if (allEquipment.size() > 0 || allEquipmentConditional.size() > 0 || applyToAllEquipment.size() > 0) {
-			resultVec.push_back(GetSingleSwapData(a_ref, a_base, "Equippables"));
+			resultVec.push_back(GetSingleSwapData(a_ref, a_base, "Equipment"));
 		}
 		if (allSpells.size() > 0 || allSpellsConditional.size() > 0 || applyToAllSpells.size() > 0) {
 			resultVec.push_back(GetSingleSwapData(a_ref, a_base, "Spells"));
-		}
-		if (allFactions.size() > 0 || allFactionsConditional.size() > 0 || applyToAllFactions.size() > 0) {
-			resultVec.push_back(GetSingleSwapData(a_ref, a_base, "Factions"));
 		}
 		if (allPackages.size() > 0 || allPackagesConditional.size() > 0 || applyToAllPackages.size() > 0) {
 			resultVec.push_back(GetSingleSwapData(a_ref, a_base, "Packages"));

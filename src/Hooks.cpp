@@ -13,7 +13,7 @@ namespace SpellFactionItemDistributor
 
 	static void AddMiscItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
 		ref->AddItem(form, nullptr, amount);
-		AddToCache(ref);
+		//AddToCache(ref);
 	}
 
 	static void RemoveItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
@@ -23,7 +23,7 @@ namespace SpellFactionItemDistributor
 	static void AddEquipItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
 		ref->AddItem(form, nullptr, amount);
 		ref->Equip(form, amount, &ref->baseExtraList, 0);
-		AddToCache(ref);
+		//AddToCache(ref);
 	}
 
 	static void AddLevItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
@@ -40,7 +40,7 @@ namespace SpellFactionItemDistributor
 			}
 			itr = itr - 1;
 		}
-		AddToCache(ref);
+		//AddToCache(ref);
 	}
 
 	static void AddSingleSpell(TESObjectREFR* ref, TESForm* form) {
@@ -139,7 +139,7 @@ namespace SpellFactionItemDistributor
 				AddEquipItem(a_ref, formToAdd, amount);
 				break;
 			case (FormType::kFormType_Clothing):
-				AddMiscItem(a_ref, formToAdd, amount);
+				AddEquipItem(a_ref, formToAdd, amount);
 				break;
 			case (FormType::kFormType_Spell):
 				AddSingleSpell(a_ref, formToAdd);
@@ -173,6 +173,7 @@ namespace SpellFactionItemDistributor
 			}
 		}
 		if (std::holds_alternative<UInt32>(swapData.formToAdd)) {
+			
 			const auto formToAdd = std::get<UInt32>(swapData.formToAdd);
 			if (formToAdd == 0) {
 				return;
@@ -207,9 +208,14 @@ namespace SpellFactionItemDistributor
 			manager->LoadFormsOnce();
 			std::vector<SFIDResult> resultVec = manager->GetAllSwapData(a_ref, base);
 			for (SFIDResult result : resultVec) {
-				manager->processedForms.emplace(a_ref->refID);
 				ProcessResult(result);
 			}
+			std::vector<SFIDResult> resultVec2 = manager->GetAllSwapData(a_ref, base);
+			for (SFIDResult result : resultVec2) {
+				ProcessResult(result);
+			}
+			manager->processedForms.emplace(a_ref->refID);
+			AddToCache(a_ref);
 		}
 		ThisStdCall(originalAddressNPC, a_ref);
 	}
