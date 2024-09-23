@@ -754,14 +754,20 @@ namespace SpellFactionItemDistributor
 		return { nullptr, empty };
 	}
 
-	SFIDResult Manager::GetBaseAll(TESObjectREFR* a_ref, TESForm* a_base, FormMap<SwapDataVec> forms, FormMap<SwapDataConditional> conditionalForms, FormMap<SwapDataConditional> conditionalFormsAll, std::string formType)
+	std::vector<SFIDResult> Manager::GetBaseAll(TESObjectREFR* a_ref, TESForm* a_base, FormMap<SwapDataVec> forms, FormMap<SwapDataConditional> conditionalForms, FormMap<SwapDataConditional> conditionalFormsAll, std::string formType)
 	{
+		std::vector<SFIDResult> newVec;
+		newVec.reserve(1024);
+		SFIDResult result;
 		DistributeRecordData newSwapData;
 		FormIDSet newSet;
 		newSet.reserve(2048);
 		if (const auto it = forms.find(a_ref->refID); it != forms.end()) {
 			for (DistributeRecordData swapData : it->second | std::ranges::views::reverse) {
-				newSwapData = swapData;
+				//newSwapData = swapData;
+				result.first = a_ref;
+				result.second = swapData;
+				newVec.push_back(result);
 				if (it->second.size() > 1) {
 					for (auto swapItem : it->second) {
 						if (std::holds_alternative<UInt32>(swapItem.formToAdd)) {
@@ -786,7 +792,10 @@ namespace SpellFactionItemDistributor
 		}
 		if (const auto it = forms.find(a_base->refID); it != forms.end()) {
 			for (DistributeRecordData swapData : it->second | std::ranges::views::reverse) {
-				newSwapData = swapData;
+				//newSwapData = swapData;
+				result.first = a_ref;
+				result.second = swapData;
+				newVec.push_back(result);
 				if (it->second.size() > 1) {
 					for (auto swapItem : it->second) {
 						if (std::holds_alternative<UInt32>(swapItem.formToAdd)) {
@@ -814,7 +823,10 @@ namespace SpellFactionItemDistributor
 				const ConditionalInput input(a_ref, a_base);
 				if (input.IsValidAll(vecData.first, a_ref)) {
 					for (DistributeRecordData swapData : vecData.second | std::ranges::views::reverse) {
-						newSwapData = swapData;
+						//newSwapData = swapData;
+						result.first = a_ref;
+						result.second = swapData;
+						newVec.push_back(result);
 						if (std::holds_alternative<UInt32>(swapData.formToAdd)) {
 							newSet.emplace(std::get<UInt32>(swapData.formToAdd));
 						}
@@ -832,7 +844,10 @@ namespace SpellFactionItemDistributor
 				const ConditionalInput input(a_ref, a_base);
 				if (input.IsValidAll(vecData.first, a_ref)) {
 					for (DistributeRecordData swapData : vecData.second | std::ranges::views::reverse) {
-						newSwapData = swapData;
+						//newSwapData = swapData;
+						result.first = a_ref;
+						result.second = swapData;
+						newVec.push_back(result);
 						if (std::holds_alternative<UInt32>(swapData.formToAdd)) {
 							newSet.emplace(std::get<UInt32>(swapData.formToAdd));
 						}
@@ -849,23 +864,37 @@ namespace SpellFactionItemDistributor
 			for (auto vecData : it->second) {
 				const ConditionalInput input(a_ref, a_base);
 				if (input.IsValidAll(vecData.first, a_ref)) {
-					for (DistributeRecordData swapData : vecData.second | std::ranges::views::reverse) {
-						newSwapData = swapData;
-						if (std::holds_alternative<UInt32>(swapData.formToAdd)) {
-							newSet.emplace(std::get<UInt32>(swapData.formToAdd));
-						}
-						else if (std::holds_alternative<FormIDSet>(swapData.formToAdd)) {
-							for (auto setItem : std::get<FormIDSet>(swapData.formToAdd)) {
-								newSet.emplace(setItem);
+					if (!string::iequals(formType, "Equipment")) {
+						for (DistributeRecordData swapData : vecData.second | std::ranges::views::reverse) {
+							result.first = a_ref;
+							result.second = swapData;
+							newVec.push_back(result);
+							if (std::holds_alternative<UInt32>(swapData.formToAdd)) {
+								newSet.emplace(std::get<UInt32>(swapData.formToAdd));
+							}
+							else if (std::holds_alternative<FormIDSet>(swapData.formToAdd)) {
+								for (auto setItem : std::get<FormIDSet>(swapData.formToAdd)) {
+									newSet.emplace(setItem);
+								}
 							}
 						}
 					}
+					else {
+						std::random_device rd;
+						std::mt19937 g(rd());
+						std::shuffle(vecData.second.begin(), vecData.second.end(), g);
+						result.first = a_ref;
+						result.second = vecData.second.at(0);
+						newVec.push_back(result);
+					}
+					
 				}
 			}
 		}
-		newSwapData.formToAdd = newSet;
-		newSwapData.formIDSet = newSet;
-		return { a_ref, newSwapData };
+		//newSwapData.formToAdd = newSet;
+		//newSwapData.formIDSet = newSet;
+		return newVec;
+		//return { a_ref, newVec };
 	}
 
 	void Manager::InsertLeveledItemRef(const TESObjectREFR* a_refr)
@@ -907,109 +936,37 @@ namespace SpellFactionItemDistributor
 		}
 	}
 
-	SFIDResult Manager::GetSingleSwapData(TESObjectREFR* a_ref, TESForm* a_base, std::string formType)
+	std::vector<SFIDResult> Manager::GetSingleSwapData(TESObjectREFR* a_ref, TESForm* a_base, std::string formType)
 	{
 		FormMap<SwapDataVec> allForms = get_form_vec(formType);
 		FormMap<SwapDataConditional> allFormsConditional = get_form_map(formType);
 		FormMap<SwapDataConditional> applyToAllForms = get_form_map_all(formType);
 
 		DistributeRecordData empty;
-		SFIDResult emptyResult = { nullptr, empty };
+		std::vector<SFIDResult> emptyResult{};
 
 		if (const auto it = processedForms.find(a_ref->refID); it != processedForms.end()) {
-			return { nullptr, empty };
+			return emptyResult;
 		}
 
 		if (const auto it = cachedForms.find(a_ref->refID); it != cachedForms.end()) {
 			
 			if (string::iequals(formType, "Items") || string::iequals(formType, "Equipment")) {
-				return { nullptr, empty };
+				return emptyResult;
 			}
 		}
 
-		const auto get_swap_base = [a_ref](const TESForm* a_form, const FormMap<SwapDataVec>& a_map) -> SFIDResult {
-			if (const auto it = a_map.find(a_form->refID); it != a_map.end()) {
-				FormIDSet newSet;
-				newSet.reserve(it->second.size());
-				for (DistributeRecordData swapData : it->second | std::ranges::views::reverse) {
-					if (it->second.size() > 1) {
-						for (auto swapItem : it->second) {
-							if (std::holds_alternative<UInt32>(swapItem.formToAdd)) {
-								newSet.emplace(std::get<UInt32>(swapItem.formToAdd));
-							}
-							else if (std::holds_alternative<FormIDSet>(swapItem.formToAdd)) {
-								for (auto setItem : std::get<FormIDSet>(swapItem.formToAdd)) {
-									newSet.emplace(setItem);
-								}
-							}
-						}
-					}
-					if (const auto it = a_map.find(static_cast<UInt32>(0xFFFFFFFF)); it != a_map.end()) {
-						for (DistributeRecordData swapData : it->second | std::ranges::views::reverse) {
-							if (std::holds_alternative<UInt32>(swapData.formToAdd)) {
-								newSet.emplace(std::get<UInt32>(swapData.formToAdd));
-							}
-							else if (std::holds_alternative<FormIDSet>(swapData.formToAdd)) {
-								for (auto setItem : std::get<FormIDSet>(swapData.formToAdd)) {
-									newSet.emplace(setItem);
-								}
-							}
-						}
-					}
-					if (std::holds_alternative<UInt32>(swapData.formToAdd)) {
-						newSet.emplace(std::get<UInt32>(swapData.formToAdd));
-					}
-					else if (std::holds_alternative<FormIDSet>(swapData.formToAdd)) {
-						for (auto setItem : std::get<FormIDSet>(swapData.formToAdd)) {
-							newSet.emplace(setItem);
-						}
-					}
-					swapData.formToAdd = newSet;
-					swapData.formIDSet = newSet;
-					if (!swapData.GetSwapBase(a_ref)) {
-						return { a_ref, swapData };
-					}
-					else {
-						return { a_ref, swapData };
-					}
-				}
-			}
-			else if (const auto it = a_map.find(static_cast<UInt32>(0xFFFFFFFF)); it != a_map.end()) {
-				for (DistributeRecordData swapData : it->second | std::ranges::views::reverse) {
-					if (!swapData.GetSwapBase(a_ref)) {
-						return { a_ref, swapData };
-					}
-					else {
-						return { a_ref, swapData };
-					}
-				}
-			}
-			DistributeRecordData empty;
-			return { nullptr, empty };
-			};
+		std::vector<SFIDResult> sfidResult{};
+		sfidResult.reserve(1024);
 
-		SFIDResult SFIDResult{ nullptr, empty };
-
-		SFIDResult = GetBaseAll(a_ref, a_base, allForms, allFormsConditional, applyToAllForms, formType);
-
-		if (!SFIDResult.first) {
-			return { nullptr, empty };
-		}
-
-		if (const auto it = cachedForms.find(a_ref->refID); it == cachedForms.end()) {
-			return SFIDResult;
-		}
-		else if (!string::iequals(formType, "Items") ||  !string::iequals(formType, "Equipment")) {
-			return SFIDResult;
-		}
-		else {
-			return { nullptr, empty };
-		}
+		sfidResult = GetBaseAll(a_ref, a_base, allForms, allFormsConditional, applyToAllForms, formType);
+		//_MESSAGE("sfidResult size: %u", sfidResult.size());
+		return sfidResult;
 	}
 
-	std::vector<SFIDResult> Manager::GetAllSwapData(TESObjectREFR* a_ref, TESForm* a_base) {
-		std::vector<SFIDResult> resultVec;
-
+	std::vector<std::vector<SFIDResult>> Manager::GetAllSwapData(TESObjectREFR* a_ref, TESForm* a_base) {
+		std::vector<std::vector<SFIDResult>> resultVec{ };
+		resultVec.reserve(5);
 		if (allFactions.size() > 0 || allFactionsConditional.size() > 0 || applyToAllFactions.size() > 0) {
 			resultVec.push_back(GetSingleSwapData(a_ref, a_base, "Factions"));
 		}

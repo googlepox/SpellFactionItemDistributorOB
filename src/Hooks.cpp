@@ -206,13 +206,17 @@ namespace SpellFactionItemDistributor
 		Manager* manager = Manager::GetSingleton();
 		if (const auto base = a_ref->baseForm) {
 			manager->LoadFormsOnce();
-			std::vector<SFIDResult> resultVec = manager->GetAllSwapData(a_ref, base);
-			for (SFIDResult result : resultVec) {
-				ProcessResult(result);
+			std::vector<std::vector<SFIDResult>> resultVec = manager->GetAllSwapData(a_ref, base);
+			for (std::vector<SFIDResult> result : resultVec) {
+				for (SFIDResult sfid : result) {
+					ProcessResult(sfid);
+				}
 			}
-			std::vector<SFIDResult> resultVec2 = manager->GetAllSwapData(a_ref, base);
-			for (SFIDResult result : resultVec2) {
-				ProcessResult(result);
+			std::vector<std::vector<SFIDResult>> resultVec2 = manager->GetAllSwapData(a_ref, base);
+			for (std::vector<SFIDResult> result : resultVec2) {
+				for (SFIDResult sfid : result) {
+					ProcessResult(sfid);
+				}
 			}
 			manager->processedForms.emplace(a_ref->refID);
 			AddToCache(a_ref);
@@ -222,15 +226,7 @@ namespace SpellFactionItemDistributor
 
 	static void __fastcall GenerateNiNodeHookCREA(TESObjectREFR* a_ref, void* edx)
 	{
-		Manager* manager = Manager::GetSingleton();
-		if (const auto base = a_ref->baseForm) {
-			manager->LoadFormsOnce();
-			std::vector<SFIDResult> resultVec = manager->GetAllSwapData(a_ref, base);
-			for (SFIDResult result : resultVec) {
-				manager->processedForms.emplace(a_ref->refID);
-				ProcessResult(result);
-			}
-		}
+		
 		ThisStdCall(originalAddressNPC, a_ref);
 	}
 
