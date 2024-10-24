@@ -124,28 +124,6 @@ namespace SpellFactionItemDistributor
 		}
 	}
 
-	bool DistributeRecordData::GetSwapBase(const TESObjectREFR* a_ref) const
-	{
-
-		if (const auto formID = std::get_if<UInt32>(&formIDSet); formID) {
-			return true;
-		}
-		else {
-			return false;
-
-			// return random element from set
-			/*
-			auto& set = std::get<FormIDSet>(formIDSet);
-			
-			const auto setEnd = std::distance(set.begin(), set.end()) - 1;
-			const auto randIt = traits.trueRandom ? SeedRNG().Generate<std::int64_t>(0, setEnd) :
-				seededRNG.Generate<std::int64_t>(0, setEnd);
-
-			return static_cast<TESObjectREFR*>(LookupFormByID(*std::next(set.begin(), randIt)));
-			*/
-		}
-	}
-
 	void DistributeRecordData::GetFormsAll(const std::string& a_path, const std::string& a_str, std::function<void(std::uint32_t, DistributeRecordData&)> a_func)
 	{
 		constexpr auto swap_empty = [](const FormIDOrSet& a_set) {

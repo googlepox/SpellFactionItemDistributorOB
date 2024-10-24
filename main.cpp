@@ -28,7 +28,7 @@ void MessageHandler(OBSEMessagingInterface::Message* msg)
 		SpellFactionItemDistributor::Install();
 	} break;
 	case OBSEMessagingInterface::kMessage_GameInitialized: {
-		SpellFactionItemDistributor::Manager::GetSingleton()->LoadCache();
+		//SpellFactionItemDistributor::Manager::GetSingleton()->LoadCache();
 	} break;
 	default: break;
 	}

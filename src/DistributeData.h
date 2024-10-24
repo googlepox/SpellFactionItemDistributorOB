@@ -49,7 +49,6 @@ namespace SpellFactionItemDistributor
 		DistributeRecordData(FormIDOrSet a_id, const Input& a_input, FormIDOrSet a_baseId);
 
 		[[nodiscard]] static FormIDOrSet GetSwapFormID(const std::string& a_str);
-		bool GetSwapBase(const TESObjectREFR* a_ref) const;
 
 		static void GetFormsAll(const std::string& a_path, const std::string& a_str, std::function<void(std::uint32_t, DistributeRecordData&)> a_func);
 

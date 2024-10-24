@@ -13,7 +13,6 @@ namespace SpellFactionItemDistributor
 
 	static void AddMiscItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
 		ref->AddItem(form, nullptr, amount);
-		//AddToCache(ref);
 	}
 
 	static void RemoveItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
@@ -23,7 +22,6 @@ namespace SpellFactionItemDistributor
 	static void AddEquipItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
 		ref->AddItem(form, nullptr, amount);
 		ref->Equip(form, amount, &ref->baseExtraList, 0);
-		//AddToCache(ref);
 	}
 
 	static void AddLevItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
@@ -40,17 +38,11 @@ namespace SpellFactionItemDistributor
 			}
 			itr = itr - 1;
 		}
-		//AddToCache(ref);
 	}
 
 	static void AddSingleSpell(TESObjectREFR* ref, TESForm* form) {
 		TESActorBase* npc = OBLIVION_CAST(ref->baseForm, TESForm, TESActorBase);
 		SpellItem* spell = OBLIVION_CAST(form, TESForm, SpellItem);
-		/*SpellListVisitor newVisitor = SpellListVisitor(&npc->spellList.spellList);
-		TESSpellList::Entry* newSpell = (TESSpellList::Entry*)FormHeap_Allocate(sizeof(TESSpellList::Entry));
-		newSpell->type = spell;
-		newSpell->next = NULL;
-		newVisitor.Append(newSpell); */
 		ThisStdCall(0x46F350, &npc->spellList, spell);
 		ThisStdCall(0x46ABF0, &npc->spellList, TESSpellList::kModified_BaseSpellList);
 	}
@@ -63,11 +55,6 @@ namespace SpellFactionItemDistributor
 		TESLeveledList* lev = OBLIVION_CAST(form, TESForm, TESLeveledList);
 		TESForm* newForm = lev->CalcElement(level, true, maxLevel - minLevel);
 		SpellItem* spell = OBLIVION_CAST(newForm, TESForm, SpellItem);
-		/*SpellListVisitor newVisitor = SpellListVisitor(&npc->spellList.spellList);
-		TESSpellList::Entry* newSpell = (TESSpellList::Entry*)FormHeap_Allocate(sizeof(TESSpellList::Entry));
-		newSpell->type = spell;
-		newSpell->next = NULL;
-		newVisitor.Append(newSpell); */
 		ThisStdCall(0x46F350, &(npc->spellList), TESSpellList::kModified_BaseSpellList);
 		ThisStdCall(0x46ABF0, ref, TESSpellList::kModified_BaseSpellList);
 		ThisStdCall(0x46ABF0, ref->baseForm, TESSpellList::kModified_BaseSpellList);
@@ -76,14 +63,6 @@ namespace SpellFactionItemDistributor
 	static void AddToFaction(TESObjectREFR* ref, TESForm* form) {
 		TESActorBase* npc = OBLIVION_CAST(ref->baseForm, TESForm, TESActorBase);
 		TESFaction* faction = OBLIVION_CAST(form, TESForm, TESFaction);
-		/*FactionListVisitor newVisitor = FactionListVisitor(&npc->actorBaseData.factionList);
-		TESActorBaseData::FactionListData* newFactionData = (TESActorBaseData::FactionListData*)FormHeap_Allocate(sizeof(TESActorBaseData::FactionListData));
-		newFactionData->faction = dynamic_cast<TESFaction*>(form);
-		newFactionData->rank = 1;
-		TESActorBaseData::FactionListEntry* newFaction = (TESActorBaseData::FactionListEntry*)FormHeap_Allocate(sizeof(TESActorBaseData::FactionListEntry));
-		newFaction->data = newFactionData;
-		newFaction->next = NULL;
-		//newVisitor.(Append(newFaction); */
 		ThisStdCall(0x4675E0, &(npc->actorBaseData), faction, 1);
 		ThisStdCall(0x4672F0, &(npc->actorBaseData), TESActorBaseData::kModified_BaseFactions);
 	}
@@ -100,7 +79,15 @@ namespace SpellFactionItemDistributor
 	}
 
 
-	static void AddForms(TESObjectREFR* a_ref, TESForm* formToAdd, UInt32 amount) {
+	static void AddForms(TESObjectREFR* a_ref, TESForm* formToAdd, UInt32 amount, UInt32 chance, bool trueRandom) {
+		auto seededRNG = SeedRNG(static_cast<std::uint32_t>(a_ref->refID));
+		if (chance != 100) {
+			const auto rng = trueRandom ? SeedRNG().Generate<std::uint32_t>(0, 100) :
+				seededRNG.Generate<std::uint32_t>(0, 100);
+			if (rng > chance) {
+				return;
+			}
+		}
 		if (formToAdd) {
 			TESNPC* npc = dynamic_cast<TESNPC*>(a_ref);
 			switch (formToAdd->GetFormType())
@@ -164,16 +151,7 @@ namespace SpellFactionItemDistributor
 		if (!ref || swapData.traits.amount == 0) {
 			return;
 		}
-		auto seededRNG = SeedRNG(static_cast<std::uint32_t>(ref->refID));
-		if (swapData.traits.chance != 100) {
-			const auto rng = swapData.traits.trueRandom ? SeedRNG().Generate<std::uint32_t>(0, 100) :
-				seededRNG.Generate<std::uint32_t>(0, 100);
-			if (rng > swapData.traits.chance) {
-				return;
-			}
-		}
 		if (std::holds_alternative<UInt32>(swapData.formToAdd)) {
-			
 			const auto formToAdd = std::get<UInt32>(swapData.formToAdd);
 			if (formToAdd == 0) {
 				return;
@@ -182,7 +160,7 @@ namespace SpellFactionItemDistributor
 			if (swapData.traits.remove) {
 				RemoveItem(ref, form, swapData.traits.amount);
 			}
-			AddForms(ref, form, swapData.traits.amount);
+			AddForms(ref, form, swapData.traits.amount, swapData.traits.chance, swapData.traits.trueRandom);
 		}
 		else if (std::holds_alternative<std::unordered_set<UInt32>>(swapData.formToAdd)) {
 			const auto& set = std::get<std::unordered_set<UInt32>>(swapData.formToAdd);
@@ -192,7 +170,7 @@ namespace SpellFactionItemDistributor
 					if (swapData.traits.remove) {
 						RemoveItem(ref, newForm, swapData.traits.amount);
 					}
-					AddForms(ref, newForm, swapData.traits.amount);
+					AddForms(ref, newForm, swapData.traits.amount, swapData.traits.chance, swapData.traits.trueRandom);
 				}
 			}
 		}
@@ -206,20 +184,20 @@ namespace SpellFactionItemDistributor
 		Manager* manager = Manager::GetSingleton();
 		if (const auto base = a_ref->baseForm) {
 			manager->LoadFormsOnce();
+			//Distribute factions first before the rest for NPC Keywords
+			std::vector<SFIDResult> factionResult = manager->GetSingleSwapData(a_ref, a_ref->baseForm, "Factions");
+			for (SFIDResult faction : factionResult) {
+				ProcessResult(faction);
+			}
+			//Distribute factions again along with the rest
 			std::vector<std::vector<SFIDResult>> resultVec = manager->GetAllSwapData(a_ref, base);
 			for (std::vector<SFIDResult> result : resultVec) {
 				for (SFIDResult sfid : result) {
 					ProcessResult(sfid);
 				}
 			}
-			std::vector<std::vector<SFIDResult>> resultVec2 = manager->GetAllSwapData(a_ref, base);
-			for (std::vector<SFIDResult> result : resultVec2) {
-				for (SFIDResult sfid : result) {
-					ProcessResult(sfid);
-				}
-			}
 			manager->processedForms.emplace(a_ref->refID);
-			AddToCache(a_ref);
+			//AddToCache(a_ref);
 		}
 		ThisStdCall(originalAddressNPC, a_ref);
 	}
@@ -227,7 +205,7 @@ namespace SpellFactionItemDistributor
 	static void __fastcall GenerateNiNodeHookCREA(TESObjectREFR* a_ref, void* edx)
 	{
 		
-		ThisStdCall(originalAddressNPC, a_ref);
+		ThisStdCall(originalAddressCREA, a_ref);
 	}
 
 	// Credits to lStewieAl
