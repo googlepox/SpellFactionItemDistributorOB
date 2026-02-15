@@ -7,7 +7,6 @@
 #include <unordered_map>
 
 #include "obse\PluginAPI.h"
-#include "obse\GameAPI.h"
 #include "obse\GameObjects.h"
 #include "obse\GameData.h"
 #include "obse\GameExtraData.h"

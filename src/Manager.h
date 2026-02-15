@@ -14,6 +14,47 @@ namespace SpellFactionItemDistributor
 		item
 	};
 
+	enum class ConditionType
+	{
+		EditorID,
+		Race,
+		Class,
+		Faction,
+		Item,
+		Name,
+		Mod,
+		Cell,
+		Worldspace,
+		Region,
+		All
+	};
+
+	struct CompiledCondition
+	{
+		ConditionType type;
+		UInt32 formID;
+		std::string text;
+		bool isExclusion;
+	};
+
+	struct ConditionalEntry
+	{
+		std::vector<CompiledCondition> conditions;
+		std::vector<DistributeRecordData> swapData;
+	};
+
+	bool operator==(const CompiledCondition& lhs,
+		const CompiledCondition& rhs)
+	{
+		return lhs.type == rhs.type &&
+			lhs.formID == rhs.formID &&
+			lhs.text == rhs.text &&
+			lhs.isExclusion == rhs.isExclusion;
+	}
+
+	using ConditionalEntryVec = std::vector<ConditionalEntry>;
+	using ConditionalFormMap = std::unordered_map<UInt32, ConditionalEntryVec>;
+
 	struct ConditionalInput
 	{
 		ConditionalInput(TESObjectREFR* a_ref, TESForm* a_form) :
@@ -25,9 +66,9 @@ namespace SpellFactionItemDistributor
 		{
 		}
 
-		[[nodiscard]] bool IsValid(const FormIDStr& a_data, TESObjectREFR* refToCheck) const;
+		[[nodiscard]] bool IsValid(const CompiledCondition& cond, TESObjectREFR* ref);
 
-		[[nodiscard]] bool IsValidAll(const FormIDStr& a_data, TESObjectREFR* refToCheck) const;
+		[[nodiscard]] bool IsValidAll(const std::vector<CompiledCondition>& conditions, TESObjectREFR* ref);
 
 		// members
 		TESObjectREFR* ref;
@@ -38,6 +79,8 @@ namespace SpellFactionItemDistributor
 		std::string editorID;
 		std::string name;
 	};
+	
+	static CompiledCondition CompileCondition(const std::string&);
 
 	class Manager
 	{
@@ -54,16 +97,23 @@ namespace SpellFactionItemDistributor
 		void            PrintConflicts() const;
 		std::vector<SFIDResult>      GetSingleSwapData(TESObjectREFR* a_ref, TESForm* a_base, std::string formType);
 		std::vector<std::vector<SFIDResult>> GetAllSwapData(TESObjectREFR* a_ref, TESForm* a_base);
-		SFIDResult      GetConditionalBase(TESObjectREFR* a_ref, TESForm* a_base, FormMap<SwapDataConditional> conditionalForms, std::string formType);
+		SFIDResult GetConditionalBase(
+			TESObjectREFR* a_ref,
+			TESForm* a_base,
+			const ConditionalFormMap& conditionalForms,
+			std::string formType);
 
-		std::vector<SFIDResult> GetBaseAll(TESObjectREFR* a_ref, TESForm* a_base, FormMap<SwapDataConditional> conditionalForms, std::string formType);
+		std::vector<SFIDResult> GetBaseAll(
+			TESObjectREFR* a_ref,
+			TESForm* a_base,
+			const ConditionalFormMap& conditionalForms,
+			const std::string& formType);
 
 		void LoadCache();
 		short loadCounter;
 		void AddToCache(TESObjectREFR* ref);
-		std::unordered_set<UInt32>     processedForms;
-		std::unordered_set<UInt32>     cachedForms;
-		std::unordered_map<UInt32, std::unordered_set<UInt32>>     cachedForms2;
+		std::unordered_set<UInt32> processedForms;
+		std::unordered_set<UInt32> cachedForms;
 
 	private:
 		Manager() = default;
@@ -77,37 +127,44 @@ namespace SpellFactionItemDistributor
 		void LoadForms();
 
 		FormMap<SwapDataVec>& get_form_vec(const std::string& a_str);
-		FormMap<SwapDataConditional>& get_form_map(const std::string& a_str);
-		FormMap<SwapDataConditional>& get_form_map_all(const std::string& a_str);
-		static void           get_forms(const std::string& a_path, const std::string& a_str, FormMap<SwapDataVec>& a_map, std::string);
-		void                  get_forms(const std::string& a_path, const std::string& a_str, const std::vector<FormIDStr>& a_conditionalIDs, std::string);
+		ConditionalFormMap& get_form_map(const std::string& a_str);
+		ConditionalFormMap& get_form_map_all(const std::string& a_str);
+		void get_forms(
+			const std::string& a_path,
+			const std::string& a_str,
+			const std::vector<CompiledCondition>& conditions,
+			std::string formType);
 
-		void get_forms_all(const std::string& a_path, const std::string& a_str, const std::vector<FormIDStr>& applyToAllForms, std::string);
+		void get_forms_all(
+			const std::string& a_path,
+			const std::string& a_str,
+			const std::vector<CompiledCondition>& conditions,
+			std::string formType);
 
 		FormMap<SwapDataVec> allItems{};
-		FormMap<SwapDataConditional> allItemsConditional{};
-		FormMap<SwapDataConditional> applyToAllItems{};
+		ConditionalFormMap allItemsConditional{};
+		ConditionalFormMap applyToAllItems{};
 
 		FormMap<SwapDataVec> allEquipment{};
-		FormMap<SwapDataConditional> allEquipmentConditional{};
-		FormMap<SwapDataConditional> applyToAllEquipment{};
+		ConditionalFormMap allEquipmentConditional{};
+		ConditionalFormMap applyToAllEquipment{};
 
 		FormMap<SwapDataVec> allSpells{};
-		FormMap<SwapDataConditional> allSpellsConditional{};
-		FormMap<SwapDataConditional> applyToAllSpells{};
+		ConditionalFormMap allSpellsConditional{};
+		ConditionalFormMap applyToAllSpells{};
 
 		FormMap<SwapDataVec> allFactions{};
-		FormMap<SwapDataConditional> allFactionsConditional{};
-		FormMap<SwapDataConditional> applyToAllFactions{};
+		ConditionalFormMap allFactionsConditional{};
+		ConditionalFormMap applyToAllFactions{};
 
 		FormMap<SwapDataVec> allPackages{};
-		FormMap<SwapDataConditional> allPackagesConditional{};
-		FormMap<SwapDataConditional> applyToAllPackages{};
+		ConditionalFormMap allPackagesConditional{};
+		ConditionalFormMap applyToAllPackages{};
 
 
 		std::unordered_set<std::uint32_t> swappedLeveledItemRefs{};
 
-		bool           hasConflicts{ false };
+		bool hasConflicts{ false };
 		std::once_flag init{};
 	};
 }

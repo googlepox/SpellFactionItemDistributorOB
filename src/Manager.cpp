@@ -40,11 +40,12 @@ namespace SpellFactionItemDistributor
 			break;
 		}
 		default:
+			return allItems;
 			break;
 		}
 	}
 
-	FormMap<SwapDataConditional>& Manager::get_form_map(const std::string& a_str)
+	ConditionalFormMap& Manager::get_form_map(const std::string& a_str)
 	{
 		switch (GetFormCodeFromString(a_str))
 		{
@@ -73,7 +74,7 @@ namespace SpellFactionItemDistributor
 		}
 	}
 
-	FormMap<SwapDataConditional>& Manager::get_form_map_all(const std::string& a_str)
+	ConditionalFormMap& Manager::get_form_map_all(const std::string& a_str)
 	{
 		switch (GetFormCodeFromString(a_str))
 		{
@@ -102,422 +103,515 @@ namespace SpellFactionItemDistributor
 		}
 	}
 
-	void Manager::get_forms(const std::string& a_path, const std::string& a_str, FormMap<SwapDataVec>& a_map, std::string formType)
+	void Manager::get_forms(
+		const std::string& a_path,
+		const std::string& a_str,
+		const std::vector<CompiledCondition>& conditions,
+		std::string formType)
 	{
-		return DistributeRecordData::GetForms(a_path, a_str, [&](UInt32 a_baseID, const DistributeRecordData& a_SwapData) {
-			a_map[a_baseID].push_back(a_SwapData);
+		auto& formMap = get_form_map(formType);
+
+		DistributeRecordData::GetForms(a_path, a_str,
+			[&, conditions](UInt32 a_baseID, const DistributeRecordData& swapData) {
+				auto& entries = formMap[a_baseID];
+
+				ConditionalEntry entry;
+
+				entry.conditions = conditions;
+
+				entry.swapData.push_back(swapData);
+
+				entries.push_back(std::move(entry));
 			});
 	}
 
-	void Manager::get_forms(const std::string& a_path, const std::string& a_str, const std::vector<FormIDStr>& a_conditionalIDs, std::string formType)
+
+	void Manager::get_forms_all(
+		const std::string& a_path,
+		const std::string& a_str,
+		const std::vector<CompiledCondition>& conditions,
+		std::string formType)
 	{
-		return DistributeRecordData::GetForms(a_path, a_str, [&](const UInt32 a_baseID, const DistributeRecordData& a_SwapData) {
-			for (auto& id : a_conditionalIDs) {
-				get_form_map(formType)[a_baseID][id].push_back(a_SwapData);
-			}
+		auto& formMap = get_form_map_all(formType);
+
+		DistributeRecordData::GetForms(a_path, a_str,
+			[&](UInt32 a_baseID, const DistributeRecordData& swapData) {
+				auto& entries = formMap[a_baseID];
+
+				ConditionalEntry entry;
+				entry.conditions = conditions;
+				entry.swapData.push_back(swapData);
+
+				entries.push_back(std::move(entry));
 			});
 	}
 
-	void Manager::get_forms_all(const std::string& a_path, const std::string& a_str, const std::vector<FormIDStr>& a_conditionalIDs, std::string formType)
-	{
-		return DistributeRecordData::GetForms(a_path, a_str, [&](const UInt32 a_baseID, const DistributeRecordData& a_SwapData) {
-			for (auto& id : a_conditionalIDs) {
-				get_form_map_all(formType)[a_baseID][id].push_back(a_SwapData);
-			}
-			});
-	}
 
-	static bool HasKeywordCell(TESObjectCELL* a_cell, const FormIDStr& a_keyword, bool isExclusion)
+
+	static bool HasKeywordCell(TESObjectCELL* cell,
+		const CompiledCondition& cond)
 	{
-		if (a_cell) {
-			std::string newKey = std::get<std::string>(a_keyword);
-			UInt32 cellID = a_cell->refID;
-			UInt32 newFormID = DistributeRecordData::GetFormID(newKey.c_str());
-			if (newFormID) {
-				if (newFormID && ((newFormID == cellID) || (std::to_string(cellID).contains(std::to_string(newFormID))))) {
-					return !isExclusion;
-				}
-				return isExclusion;
-			}
-			else {
-				std::string editorID = (a_cell->GetEditorName());
-				std::transform(newKey.begin(), newKey.end(), newKey.begin(), tolower);
-				std::transform(editorID.begin(), editorID.end(), editorID.begin(), tolower);
-				std::string cStrKey = newKey.c_str();
-				std::string cStrEditorID = editorID.c_str();
-				if (cStrEditorID.find(cStrKey.c_str()) != std::string::npos) {
-					return !isExclusion;
-				}
-				return isExclusion;
-			}
-		}
-		else {
+		if (!cell)
 			return false;
+
+		bool match = false;
+
+		if (cond.formID != 0)
+		{
+			match = (cell->refID == cond.formID);
 		}
+		else
+		{
+			std::string editorID = cell->GetEditorName();
+			std::transform(editorID.begin(), editorID.end(),
+				editorID.begin(), ::tolower);
+
+			match = (editorID.find(cond.text) != std::string::npos);
+		}
+
+		return cond.isExclusion ? !match : match;
 	}
 
-	static bool HasKeywordWorldspace(TESObjectCELL* a_cell, const FormIDStr& a_keyword, bool isExclusion)
+
+	static bool HasKeywordWorldspace(TESObjectCELL* cell,
+		const CompiledCondition& cond)
 	{
-		if (a_cell) {
-			std::string newKey = std::get<std::string>(a_keyword);
-			UInt32 cellID = a_cell->worldSpace->refID;
-			UInt32 newFormID = DistributeRecordData::GetFormID(newKey.c_str());
-			if (newFormID) {
-				if (newFormID && ((newFormID == cellID) || (std::to_string(cellID).contains(std::to_string(newFormID))))) {
-					return !isExclusion;
-				}
-				return isExclusion;
-			}
-			else {
-				std::string editorID = (a_cell->worldSpace->GetEditorName());
-				std::transform(newKey.begin(), newKey.end(), newKey.begin(), tolower);
-				std::transform(editorID.begin(), editorID.end(), editorID.begin(), tolower);
-				std::string cStrKey = newKey.c_str();
-				std::string cStrEditorID = editorID.c_str();
-				if (cStrEditorID.find(cStrKey.c_str()) != std::string::npos) {
-					return !isExclusion;
-				}
-				return isExclusion;
-			}
-		}
-		else {
+		if (!cell || !cell->worldSpace)
 			return false;
+
+		bool match = false;
+
+		if (cond.formID != 0)
+		{
+			match = (cell->worldSpace->refID == cond.formID);
 		}
+		else
+		{
+			std::string editorID = cell->worldSpace->GetEditorName();
+			std::transform(editorID.begin(), editorID.end(),
+				editorID.begin(), ::tolower);
+
+			match = (editorID.find(cond.text) != std::string::npos);
+		}
+
+		return cond.isExclusion ? !match : match;
 	}
 
-	static bool HasKeywordRegion(TESObjectCELL* a_cell, const FormIDStr& a_keyword, bool isExclusion)
+
+	static bool HasKeywordRegion(TESObjectCELL* cell,
+		const CompiledCondition& cond)
 	{
-		if (a_cell) {
-			ExtraRegionList* regionList = dynamic_cast<ExtraRegionList*>(a_cell->extraData.GetByType(kExtraData_RegionList));
-			TESRegionList* regions = regionList->regionList;
-			TESRegionList::Entry* regionPtr = &(regions->regionList);
-			bool found = false;
-			while (regionPtr != NULL)
+		if (!cell)
+			return false;
+
+		auto* regionList =
+			static_cast<ExtraRegionList*>(
+				cell->extraData.GetByType(kExtraData_RegionList));
+
+		if (!regionList || !regionList->regionList)
+			return false;
+
+		bool match = false;
+
+		TESRegionList::Entry* regionPtr =
+			&regionList->regionList->regionList;
+
+		while (regionPtr)
+		{
+			TESRegion* region = regionPtr->region;
+			if (!region)
+				break;
+
+			if (cond.formID != 0)
 			{
-				UInt32 regionID = regionPtr->region->refID;
-				std::string newKey = std::get<std::string>(a_keyword);
-				UInt32 newFormID = DistributeRecordData::GetFormID(newKey.c_str());
-				if (newFormID) {
-					if (newFormID && ((newFormID == regionID) || (std::to_string(regionID).contains(std::to_string(newFormID))))) {
-						found = true;
-					}
+				if (region->refID == cond.formID)
+				{
+					match = true;
+					break;
 				}
-				else {
-					std::string editorID = (regionPtr->region->GetEditorName());
-					std::transform(newKey.begin(), newKey.end(), newKey.begin(), tolower);
-					std::transform(editorID.begin(), editorID.end(), editorID.begin(), tolower);
-					std::string cStrKey = newKey.c_str();
-					std::string cStrEditorID = editorID.c_str();
-					if (cStrEditorID.find(cStrKey.c_str()) != std::string::npos) {
-						found = true;
-					}
+			}
+			else
+			{
+				std::string editorID = region->GetEditorName();
+				std::transform(editorID.begin(), editorID.end(),
+					editorID.begin(), ::tolower);
+
+				if (editorID.find(cond.text) != std::string::npos)
+				{
+					match = true;
+					break;
 				}
-				regionPtr = regionPtr->next;
 			}
-			if (found) {
-				return !isExclusion;
-			}
-			return isExclusion;
+
+			regionPtr = regionPtr->next;
 		}
-		else {
-			return false;
-		}
+
+		return cond.isExclusion ? !match : match;
 	}
 
-	static bool HasKeywordEditorID(TESObjectREFR* ref, const FormIDStr& a_keyword, bool isExclusion)
+
+	static bool HasKeywordEditorID(TESObjectREFR* ref,
+		const CompiledCondition& cond)
 	{
-		if (ref) {
-			std::string newKey = std::get<std::string>(a_keyword);
-			UInt32 refID = ref->baseForm->refID;
-			UInt32 newFormID = std::atoi(newKey.c_str());
-			if (newFormID) {
-				if (newFormID && ((newFormID == refID))) {
-					return !isExclusion;
-				}
-				return isExclusion;
-			}
-			else {
-				std::string editorID;
-				if (ref->baseForm) {
-					editorID = (ref->baseForm->GetEditorName());
-				}
-				else {
-					editorID = (ref->GetEditorName());
-				}
-				std::transform(newKey.begin(), newKey.end(), newKey.begin(), tolower);
-				std::transform(editorID.begin(), editorID.end(), editorID.begin(), tolower);
-				std::string cStrKey = newKey.c_str();
-				std::string cStrEditorID = editorID.c_str();
-				if (cStrEditorID.find(cStrKey.c_str()) != std::string::npos) {
-					return !isExclusion;
-				}
-				return isExclusion;
-			}
-		}
-		else {
+		if (!ref || !ref->baseForm)
 			return false;
+
+		bool match = false;
+
+		if (cond.formID != 0)
+		{
+			match = (ref->baseForm->refID == cond.formID);
 		}
+		else
+		{
+			std::string editorID = ref->baseForm->GetEditorName();
+			std::transform(editorID.begin(), editorID.end(),
+				editorID.begin(), ::tolower);
+
+			match = (editorID.find(cond.text) != std::string::npos);
+		}
+
+		return cond.isExclusion ? !match : match;
 	}
 
-	static bool HasKeywordName(TESObjectREFR* ref, const FormIDStr& a_keyword, bool isExclusion)
+
+	static bool HasKeywordName(TESObjectREFR* ref,
+		const CompiledCondition& cond)
 	{
-		if (ref) {
-			std::string newKey = std::get<std::string>(a_keyword);
-			std::string editorID;
-			if (ref->baseForm) {
-				editorID = (ref->baseForm->GetFullName()->name.m_data);
-			}
-			else {
-				editorID = (ref->GetFullName()->name.m_data);
-			}
-			std::transform(newKey.begin(), newKey.end(), newKey.begin(), tolower);
-			std::transform(editorID.begin(), editorID.end(), editorID.begin(), tolower);
-			std::string cStrKey = newKey.c_str();
-			std::string cStrEditorID = editorID.c_str();
-			if (cStrEditorID.find(cStrKey.c_str()) != std::string::npos) {
-				return !isExclusion;
-			}
-			return isExclusion;
-		}
-		else {
+		if (!ref || !ref->baseForm || !ref->baseForm->GetFullName())
 			return false;
-		}
+
+		std::string name = ref->baseForm->GetFullName()->name.m_data;
+		std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+
+		bool match = (name.find(cond.text) != std::string::npos);
+
+		return cond.isExclusion ? !match : match;
 	}
 
-	static bool HasKeywordRace(TESObjectREFR* ref, const FormIDStr& a_keyword, bool isExclusion)
+
+	static bool HasKeywordRace(TESObjectREFR* ref,
+		const CompiledCondition& cond)
 	{
-		if (ref) {
-			TESActorBase* actor = dynamic_cast<TESActorBase*>(ref->baseForm);
-			TESNPC* npc = dynamic_cast<TESNPC*>(actor);
-			std::string newKey = std::get<std::string>(a_keyword);
-			std::string editorID = (npc->race.race->GetEditorName());
-			UInt32 refID = npc->race.race->refID;
-			UInt32 newFormID = std::atoi(newKey.c_str());
-			if (newFormID) {
-				if (newFormID && ((newFormID == refID) || (std::to_string(refID).contains(std::to_string(newFormID))))) {
-					return !isExclusion;
-				}
-				return isExclusion;
-			}
-			else {
-				std::string editorID = (ref->baseForm->GetEditorName());
-				std::transform(newKey.begin(), newKey.end(), newKey.begin(), tolower);
-				std::transform(editorID.begin(), editorID.end(), editorID.begin(), tolower);
-				std::string cStrKey = newKey.c_str();
-				std::string cStrEditorID = editorID.c_str();
-				if (cStrEditorID.find(cStrKey.c_str()) != std::string::npos) {
-					return !isExclusion;
-				}
-				return isExclusion;
-			}
-		}
-		else {
+		if (!ref)
 			return false;
+
+		auto* npc = static_cast<TESNPC*>(ref->baseForm);
+		if (!npc || !npc->race.race)
+			return false;
+
+		bool match = false;
+
+		if (cond.formID != 0)
+		{
+			match = (npc->race.race->refID == cond.formID);
 		}
+		else
+		{
+			std::string editorID = npc->race.race->GetEditorName();
+			std::transform(editorID.begin(), editorID.end(),
+				editorID.begin(), ::tolower);
+
+			match = (editorID.find(cond.text) != std::string::npos);
+		}
+
+		return cond.isExclusion ? !match : match;
 	}
 
-	static bool HasKeywordFaction(TESObjectREFR* ref, const FormIDStr& a_keyword, bool isExclusion)
+
+	static bool HasKeywordFaction(TESObjectREFR* ref,
+		const CompiledCondition& cond)
 	{
-		if (ref) {
-			bool found = false;
-			TESActorBase* actor = dynamic_cast<TESActorBase*>(ref->baseForm);
-			TESNPC* npc = dynamic_cast<TESNPC*>(actor);
-			TESActorBaseData::FactionListEntry* entry = &npc->actorBaseData.factionList;
-			std::string newKey = std::get<std::string>(a_keyword);
-			while (entry && entry->data)
-			{	
-				TESFaction* faction = entry->data->faction;
+		if (!ref)
+			return false;
+
+		auto* npc = static_cast<TESNPC*>(ref->baseForm);
+		if (!npc)
+			return false;
+
+		bool match = false;
+
+		auto* entry = &npc->actorBaseData.factionList;
+
+		while (entry && entry->data)
+		{
+			TESFaction* faction = entry->data->faction;
+
+			if (cond.formID != 0)
+			{
+				if (faction->refID == cond.formID)
+				{
+					match = true;
+					break;
+				}
+			}
+			else
+			{
 				std::string editorID = faction->GetEditorName();
-				std::string refID = std::to_string(faction->refID).c_str();
-				std::transform(newKey.begin(), newKey.end(), newKey.begin(), tolower);
-				std::transform(editorID.begin(), editorID.end(), editorID.begin(), tolower);
-				std::string cStrKey = newKey.c_str();
-				std::string cStrEditorID = editorID.c_str();
-				if (cStrEditorID.find(cStrKey.c_str()) != std::string::npos) {
-					found = true;
+				std::transform(editorID.begin(), editorID.end(),
+					editorID.begin(), ::tolower);
+
+				if (editorID.find(cond.text) != std::string::npos)
+				{
+					match = true;
+					break;
 				}
-				else if (refID.find(cStrKey.c_str()) != std::string::npos) {
-					found = true;
-				}
+			}
+
+			entry = entry->Next();
+		}
+
+		return cond.isExclusion ? !match : match;
+	}
+
+
+	static bool HasKeywordClass(
+		TESObjectREFR* ref,
+		const CompiledCondition& cond)
+	{
+		if (!ref || !ref->baseForm)
+			return false;
+
+		auto* actor = dynamic_cast<TESActorBase*>(ref->baseForm);
+		if (!actor)
+			return false;
+
+		auto* npc = dynamic_cast<TESNPC*>(actor);
+		if (!npc || !npc->npcClass)
+			return false;
+
+		const UInt32 classFormID = npc->npcClass->refID;
+
+		bool matched = false;
+
+		if (cond.formID != 0)
+		{
+			matched = (cond.formID == classFormID);
+		}
+		else if (!cond.text.empty())
+		{
+			std::string classEditorID = npc->npcClass->GetEditorName();
+
+			std::string keyLower = cond.text;
+			std::string editorLower = classEditorID;
+
+			std::transform(keyLower.begin(), keyLower.end(), keyLower.begin(), ::tolower);
+			std::transform(editorLower.begin(), editorLower.end(), editorLower.begin(), ::tolower);
+
+			matched = (editorLower.find(keyLower) != std::string::npos);
+		}
+
+		return cond.isExclusion ? !matched : matched;
+	}
+
+
+	static bool HasKeywordItem(TESObjectREFR* ref,
+		const CompiledCondition& cond)
+	{
+		if (!ref)
+			return false;
+
+		TESContainer* container = ref->GetContainer();
+		if (!container)
+			return false;
+
+		bool match = false;
+
+		TESContainer::Entry* entry = &container->list;
+
+		while (entry && entry->data)
+		{
+			TESForm* form = entry->data->type;
+
+			if (!form)
+			{
 				entry = entry->Next();
+				continue;
 			}
-			if (found) {
-				return !isExclusion;
-			}
-			return isExclusion;
-		}
-		else {
-			return false;
-		}
-	}
 
-	static bool HasKeywordClass(TESObjectREFR* ref, const FormIDStr& a_keyword, bool isExclusion)
-	{
-		if (ref) {
-			TESActorBase* actor = dynamic_cast<TESActorBase*>(ref->baseForm);
-			TESNPC* npc = dynamic_cast<TESNPC*>(actor);
-			std::string newKey = std::get<std::string>(a_keyword);
-			std::string editorID = (npc->npcClass->GetEditorName());
-			UInt32 refID = npc->npcClass->refID;
-			UInt32 newFormID = std::atoi(newKey.c_str());
-			if (newFormID) {
-				if (newFormID && ((newFormID == refID) || (std::to_string(refID).contains(std::to_string(newFormID))))) {
-					return !isExclusion;
+			if (cond.formID != 0)
+			{
+				if (form->refID == cond.formID)
+				{
+					match = true;
+					break;
 				}
-				return isExclusion;
 			}
-			else {
-				std::string editorID = (ref->baseForm->GetEditorName());
-				std::transform(newKey.begin(), newKey.end(), newKey.begin(), tolower);
-				std::transform(editorID.begin(), editorID.end(), editorID.begin(), tolower);
-				std::string cStrKey = newKey.c_str();
-				std::string cStrEditorID = editorID.c_str();
-				if (cStrEditorID.find(cStrKey.c_str()) != std::string::npos) {
-					return !isExclusion;
-				}
-				return isExclusion;
-			}
-		}
-		else {
-			return false;
-		}
-	}
-
-	static bool HasKeywordItem(TESObjectREFR* ref, const FormIDStr& a_keyword, bool isExclusion)
-	{
-		if (ref) {
-			bool found = false;
-			TESActorBase* actor = dynamic_cast<TESActorBase*>(ref->baseForm);
-			Character* npc = dynamic_cast<Character*>(actor);
-			TESContainer* cont = ref->GetContainer();
-			TESContainer::Entry* entry = &cont->list;
-			while (entry && entry->data) {
-				TESForm* form = entry->data->type;
+			else
+			{
 				std::string editorID = form->GetEditorName();
-				UInt32 refID = form->refID;
-				std::string newKey = std::get<std::string>(a_keyword);
-				std::transform(newKey.begin(), newKey.end(), newKey.begin(), tolower);
-				std::transform(editorID.begin(), editorID.end(), editorID.begin(), tolower);
-				std::string cStrKey = newKey.c_str();
-				std::string cStrEditorID = editorID.c_str();
-				if (cStrEditorID.find(cStrKey.c_str()) != std::string::npos) {
-					found = true;
+				std::transform(editorID.begin(), editorID.end(),
+					editorID.begin(), ::tolower);
+
+				if (editorID.find(cond.text) != std::string::npos)
+				{
+					match = true;
+					break;
 				}
-				else if (refID == atoi(cStrKey.c_str())) {
-					found = true;
-				}
-				entry = entry->Next();
 			}
-			if (found) {
-				return !isExclusion;
-			}
+
+			entry = entry->Next();
 		}
-		else {
+
+		return cond.isExclusion ? !match : match;
+	}
+
+
+	static bool HasKeywordMod(TESObjectREFR* ref,
+		const CompiledCondition& cond)
+	{
+		if (!ref || !ref->baseForm)
+			return false;
+
+		UInt8 modIndex = ref->baseForm->GetModIndex();
+		std::string modName =
+			(*g_dataHandler)->GetNthModName(modIndex);
+
+		std::transform(modName.begin(), modName.end(),
+			modName.begin(), ::tolower);
+
+		bool match = false;
+
+		if (cond.formID != 0)
+		{
+			match = false;
+		}
+		else
+		{
+			match = (modName.find(cond.text) != std::string::npos);
+		}
+
+		return cond.isExclusion ? !match : match;
+	}
+
+
+	bool IsValid(const CompiledCondition& cond,
+		TESObjectREFR* ref)
+	{
+		switch (cond.type)
+		{
+		case ConditionType::All:
+			return true;
+
+		case ConditionType::Cell:
+			return HasKeywordCell(ref->parentCell, cond);
+
+		case ConditionType::Worldspace:
+			return HasKeywordWorldspace(ref->parentCell, cond);
+
+		case ConditionType::Region:
+			return HasKeywordRegion(ref->parentCell, cond);
+
+		case ConditionType::EditorID:
+			return HasKeywordEditorID(ref, cond);
+
+		case ConditionType::Race:
+			return HasKeywordRace(ref, cond);
+
+		case ConditionType::Faction:
+			return HasKeywordFaction(ref, cond);
+
+		case ConditionType::Item:
+			return HasKeywordItem(ref, cond);
+
+		case ConditionType::Name:
+			return HasKeywordName(ref, cond);
+
+		case ConditionType::Mod:
+			return HasKeywordMod(ref, cond);
+
+		case ConditionType::Class:
+			return HasKeywordClass(ref, cond);
+
+		default:
 			return false;
 		}
 	}
 
-	static bool HasKeywordMod(TESObjectREFR* ref, const FormIDStr& a_keyword, bool isExclusion)
-	{
-		if (ref) {
-			std::string newKey = std::get<std::string>(a_keyword);
-			UInt8 modIndex = ref->baseForm->GetModIndex();
-			std::string modName = (*g_dataHandler)->GetNthModName(modIndex);
-			std::transform(newKey.begin(), newKey.end(), newKey.begin(), tolower);
-			std::transform(modName.begin(), modName.end(), modName.begin(), tolower);
-			std::string cStrKey = newKey.c_str();
-			std::string cStrModName = modName.c_str();
-			if (cStrModName.find(cStrKey.c_str()) != std::string::npos) {
-				return !isExclusion;
-			}
-			return isExclusion;
-		}
-		else {
-			return false;
-		}
-	}
 
-	bool ConditionalInput::IsValid(const FormIDStr& a_data, TESObjectREFR* refToCheck) const
+	bool IsValidAll(
+		const std::vector<CompiledCondition>& conditions,
+		TESObjectREFR* ref)
 	{
-		if (refToCheck) {
-			FormIDStr newData = a_data;
-			UInt32 formID;
-			std::string formString = std::get<std::string>(a_data);
-			boost::trim(formString);
-			bool isExclusion = false;
-			if (formString.find('-') != std::string::npos) {
-				std::string::iterator end_pos = std::remove(formString.begin(), formString.end(), '-');
-				formString.erase(end_pos, formString.end());
-				isExclusion = true;
-			}
-			if (!formString.contains(':')) {
-				return HasKeywordEditorID(refToCheck, formString, isExclusion);;
-			}
-			auto conditionType = string::split(formString, ":");
-			boost::trim(conditionType[0]);
-			boost::trim(conditionType[1]);
-			formID = DistributeRecordData::GetFormID(conditionType[1]);
-			if (formID) {
-				newData = std::to_string(formID);
-			}
-			else {
-				newData = conditionType[1];
-			}
-			if (conditionType[0] == "Cell") {
-				return HasKeywordCell(refToCheck->parentCell, newData, isExclusion);
-			}
-			else if (conditionType[0] == "EditorID") {
-				return HasKeywordEditorID(refToCheck, newData, isExclusion);
-			}
-			else if (conditionType[0] == "Race") {
-				return HasKeywordRace(refToCheck, newData, isExclusion);
-			}
-			else if (conditionType[0] == "Class") {
-				return HasKeywordClass(refToCheck, newData, isExclusion);
-			}
-			else if (conditionType[0] == "Faction") {
-				return HasKeywordFaction(refToCheck, newData, isExclusion);
-			}
-			else if (conditionType[0] == "Item") {
-				return HasKeywordItem(refToCheck, newData, isExclusion);
-			}
-			else if (conditionType[0] == "Name") {
-				return HasKeywordName(refToCheck, newData, isExclusion);
-			}
-			else if (conditionType[0] == "Mod") {
-				return HasKeywordMod(refToCheck, newData, isExclusion);
-			}
-			else {
+		if (!ref)
+			return false;
+
+		for (const auto& cond : conditions)
+		{
+			if (!IsValid(cond, ref))
 				return false;
-			}
 		}
-		return false;
+
+		return true;
 	}
 
-	bool ConditionalInput::IsValidAll(const FormIDStr& a_data, TESObjectREFR* refToCheck) const
+
+	CompiledCondition CompileCondition(const std::string& rawCondition)
 	{
-		if (refToCheck) {
-			std::string conditionStr = std::get<std::string>(a_data);
-			std::vector<bool> resultVec;
-			if (conditionStr.contains("ALL")) return true;
-			if (conditionStr.contains("&")) {
-				auto conditions = string::split(conditionStr, "&");
-				for (const auto& condition : conditions) {
-					resultVec.push_back(IsValid(condition, refToCheck));
-				}
-				for (const auto& result : resultVec) {
-					if (!result) {
-						return false;
-					}
-				}
-				return true;
-			}
-			else {
-				return IsValid(conditionStr, refToCheck);
-			}
-			
+		CompiledCondition compiled{};
+
+		if (rawCondition.empty())
+			return compiled;
+
+		std::string condition = rawCondition;
+		boost::trim(condition);
+
+		if (!condition.empty() && condition.front() == '-')
+		{
+			compiled.isExclusion = true;
+			condition.erase(condition.begin());
+			boost::trim(condition);
 		}
-		return false;
+
+		if (string::iequals(condition, "ALL"))
+		{
+			compiled.type = ConditionType::All;
+			return compiled;
+		}
+
+		const auto colonPos = condition.find(':');
+
+		std::string typeStr;
+		std::string valueStr;
+
+		if (colonPos != std::string::npos)
+		{
+			typeStr = condition.substr(0, colonPos);
+			valueStr = condition.substr(colonPos + 1);
+
+			boost::trim(typeStr);
+			boost::trim(valueStr);
+		}
+		else
+		{
+			typeStr = "editorid";
+			valueStr = condition;
+		}
+		std::transform(typeStr.begin(), typeStr.end(), typeStr.begin(), ::tolower);
+		std::transform(valueStr.begin(), valueStr.end(), valueStr.begin(), ::tolower);
+
+		if (typeStr == "cell")     compiled.type = ConditionType::Cell;
+		else if (typeStr == "race")     compiled.type = ConditionType::Race;
+		else if (typeStr == "class")    compiled.type = ConditionType::Class;
+		else if (typeStr == "faction")  compiled.type = ConditionType::Faction;
+		else if (typeStr == "item")     compiled.type = ConditionType::Item;
+		else if (typeStr == "name")     compiled.type = ConditionType::Name;
+		else if (typeStr == "mod")      compiled.type = ConditionType::Mod;
+		else if (typeStr == "editorid")      compiled.type = ConditionType::EditorID;
+		else                            compiled.type = ConditionType::EditorID;
+
+		if (UInt32 id = DistributeRecordData::GetFormID(valueStr.c_str()); id != 0)
+		{
+			compiled.formID = id;
+			compiled.text.clear();
+		}
+		else
+		{
+			compiled.formID = 0;
+			compiled.text = std::move(valueStr);
+		}
+
+		return compiled;
 	}
 
 	void Manager::LoadFormsOnce()
@@ -563,17 +657,13 @@ namespace SpellFactionItemDistributor
 			ini.GetAllSections(sections);
 			sections.sort(CSimpleIniA::Entry::LoadOrder());
 
-			constexpr auto push_filter = [](const std::string& a_condition, std::vector<FormIDStr>& a_processedFilters) {
-				if (a_condition.contains('&') || a_condition.contains(':') || a_condition.contains("ALL")) {
-					a_processedFilters.emplace_back(a_condition);
-				}
-				else if (const auto processedID = DistributeRecordData::GetFormID(a_condition); processedID != 0) {
-					a_processedFilters.emplace_back(processedID);
-				}
-				else {
-					_ERROR("\t\tFilter  [%s] INFO - unable to find form, treating filter as string", a_condition.c_str());
-					a_processedFilters.emplace_back(a_condition);
-				}
+			constexpr auto push_filter =
+				[](const std::string& rawCondition,
+					std::vector<CompiledCondition>& outFilters) {
+						if (rawCondition.empty())
+							return;
+
+						outFilters.emplace_back(CompileCondition(rawCondition));
 				};
 
 			for (auto& [section, comment, keyOrder] : sections) {
@@ -585,7 +675,7 @@ namespace SpellFactionItemDistributor
 					_MESSAGE("\t\treading [%s] : %u conditions", splitSection[0].c_str(), conditions.size());
 				}
 
-				std::vector<FormIDStr> processedConditions;
+				std::vector<CompiledCondition> processedConditions;
 				processedConditions.reserve(conditions.size());
 				for (auto& condition : conditions) {
 					push_filter(condition, processedConditions);
@@ -641,22 +731,62 @@ namespace SpellFactionItemDistributor
 
 		//_MESSAGE("%u Items processed", allItems.size());
 		_MESSAGE("%u Items processed", allItemsConditional.size());
+		for (const auto& [baseID, entries] : allItemsConditional)
+		{
+			_MESSAGE("BaseID %08X has %u entries",
+				baseID,
+				entries.size());
+			for (const auto& entry : entries)
+			{
+				_MESSAGE("conditions size : %u", entry.conditions.size());
+				for (const auto& condition:  entry.conditions)
+				{
+					_MESSAGE("condition text, %s", condition.text.c_str());
+					_MESSAGE("condition formID, 0x%08X", condition.formID);
+					_MESSAGE("condition type, %u", condition.type);
+				}
+			}
+		}
 		//_MESSAGE("%u conditional Items processed for ALL\n", applyToAllItems.size());
 
 		//_MESSAGE("%u Equippables processed", allEquipment.size());
 		_MESSAGE("%u Equippables processed", allEquipmentConditional.size());
+		for (const auto& [baseID, entries] : allEquipmentConditional)
+		{
+			_MESSAGE("BaseID %08X has %u entries",
+				baseID,
+				entries.size());
+		}
 		//_MESSAGE("%u conditional Equippables processed for ALL\n", applyToAllEquipment.size());
 
 		//_MESSAGE("%u Spells processed", allSpells.size());
 		_MESSAGE("%u Spells processed", allSpellsConditional.size());
+		for (const auto& [baseID, entries] : allSpellsConditional)
+		{
+			_MESSAGE("BaseID %08X has %u entries",
+				baseID,
+				entries.size());
+		}
 		//_MESSAGE("%u conditional Spells processed for ALL\n", applyToAllSpells.size());
 
 		//_MESSAGE("%u Factions processed", allFactions.size());
 		_MESSAGE("%u Factions processed", allFactionsConditional.size());
+		for (const auto& [baseID, entries] : allFactionsConditional)
+		{
+			_MESSAGE("BaseID %08X has %u entries",
+				baseID,
+				entries.size());
+		}
 		//_MESSAGE("%u conditional Factions processed for ALL\n", applyToAllFactions.size());
 
 		//_MESSAGE("%u Packages processed", allPackages.size());
 		_MESSAGE("%u Packages processed", allPackagesConditional.size());
+		for (const auto& [baseID, entries] : allPackagesConditional)
+		{
+			_MESSAGE("BaseID %08X has %u entries",
+				baseID,
+				entries.size());
+		}
 		//_MESSAGE("%u conditional Packages processed for ALL\n", applyToAllPackages.size());
 
 		_MESSAGE("-END-");
@@ -668,155 +798,116 @@ namespace SpellFactionItemDistributor
 		}
 	}
 
-	SFIDResult Manager::GetConditionalBase(TESObjectREFR* a_ref, TESForm* a_base, FormMap<SwapDataConditional> conditionalForms, std::string formType)
+
+	SFIDResult Manager::GetConditionalBase(
+		TESObjectREFR* a_ref,
+		TESForm* a_base,
+		const ConditionalFormMap& conditionalForms,
+		std::string formType)
 	{
-		DistributeRecordData empty;
+		DistributeRecordData empty{};
+
+		if (!a_ref || !a_base)
+			return { nullptr, empty };
+
 		const auto itRef = conditionalForms.find(a_ref->refID);
 		const auto itBase = conditionalForms.find(a_base->refID);
-		const auto itAll = conditionalForms.find(static_cast<std::uint32_t>(0xFFFFFFFF));
-		bool foundRef = false;
-		bool foundBase = false;
-		bool foundAll = false;
-		if (itRef != conditionalForms.end()) {
-			foundRef = true;
-		}
-		if (itBase != conditionalForms.end()) {
-			foundBase = true;
-		}
-		if (itAll != conditionalForms.end()) {
-			foundAll = true;
-		}
-		if (foundRef || foundBase || foundAll) {
-			const ConditionalInput input(a_ref, a_base);
-			if (foundRef) {
-				const auto             result = std::ranges::find_if(itRef->second, [&](const auto& a_data) {
-					return input.IsValidAll(a_data.first, a_ref);
-					});
-				if (result != itRef->second.end()) {
-					for (DistributeRecordData SwapData : result->second | std::ranges::views::reverse) {
-						return { a_ref, SwapData };
-					}
+		const auto itAll = conditionalForms.find(0xFFFFFFFF);
+
+		auto processBucket =
+			[&](const ConditionalEntryVec& entries) -> SFIDResult {
+			for (const auto& entry : entries)
+			{
+				if (!IsValidAll(entry.conditions, a_ref))
+					continue;
+
+				for (auto it = entry.swapData.rbegin();
+					it != entry.swapData.rend(); ++it)
+				{
+					return { a_ref, *it };
 				}
 			}
-			else if (foundBase) {
-				const auto             result = std::ranges::find_if(itBase->second, [&](const auto& a_data) {
-					return input.IsValidAll(a_data.first, a_ref);
-					});
-				if (result != itBase->second.end()) {
-					for (DistributeRecordData SwapData : result->second | std::ranges::views::reverse) {
-						return { a_ref, SwapData };
-					}
-				}
-			}
-			else {
-				const auto             result = std::ranges::find_if(itAll->second, [&](const auto& a_data) {
-					return input.IsValidAll(a_data.first, a_ref);
-					});
-				if (result != itAll->second.end()) {
-					for (DistributeRecordData SwapData : result->second | std::ranges::views::reverse) {
-						return { a_ref, SwapData };
-					}
-				}
-			}
-		}
+
+			return { nullptr, empty };
+			};
+
+		if (itRef != conditionalForms.end())
+			return processBucket(itRef->second);
+
+		if (itBase != conditionalForms.end())
+			return processBucket(itBase->second);
+
+		if (itAll != conditionalForms.end())
+			return processBucket(itAll->second);
+
 		return { nullptr, empty };
 	}
 
-	std::vector<SFIDResult> Manager::GetBaseAll(TESObjectREFR* a_ref, TESForm* a_base, FormMap<SwapDataConditional> conditionalForms, std::string formType)
-	{
-		std::vector<SFIDResult> newVec;
-		SFIDResult sfidResult;
-		DistributeRecordData newSwapData;
-		FormIDSet newSet;
-		std::random_device rd;
-		std::mt19937 g(rd());
-		bool getAll = false;
 
-		if (!string::iequals(formType, "Equipment") && !string::iequals(formType, "Items")) {
-			getAll = true;
-		}
+
+	std::vector<SFIDResult> Manager::GetBaseAll(
+		TESObjectREFR* a_ref,
+		TESForm* a_base,
+		const ConditionalFormMap& conditionalForms,
+		const std::string& formType)
+	{
+		std::vector<SFIDResult> results;
+
+		if (!a_ref || !a_base)
+			return results;
+
+		const bool getAll =
+			!string::iequals(formType, "Equipment") &&
+			!string::iequals(formType, "Items");
 
 		const auto itRef = conditionalForms.find(a_ref->refID);
 		const auto itBase = conditionalForms.find(a_base->refID);
-		const auto itAll = conditionalForms.find(static_cast<std::uint32_t>(0xFFFFFFFF));
-		bool foundRef = false;
-		bool foundBase = false;
-		bool foundAll = false;
-		if (itRef != conditionalForms.end()) {
-			foundRef = true;
-		}
-		if (itBase != conditionalForms.end()) {
-			foundBase = true;
-		}
-		if (itAll != conditionalForms.end()) {
-			foundAll = true;
-		}
-		if (foundRef || foundBase || foundAll) {
-			const ConditionalInput input(a_ref, a_base);
-			if (foundRef) {
-				for (auto vecData : itRef->second) {
-					const ConditionalInput input(a_ref, a_base);
-					if (input.IsValidAll(vecData.first, a_ref)) {
-						if (getAll) {
-							for (DistributeRecordData swapData : vecData.second | std::ranges::views::reverse) {
-								sfidResult.first = a_ref;
-								sfidResult.second = swapData;
-								newVec.push_back(sfidResult);
-							}
-						}
-						else {
-							std::shuffle(vecData.second.begin(), vecData.second.end(), g);
-							sfidResult.first = a_ref;
-							sfidResult.second = vecData.second.at(0);
-							newVec.push_back(sfidResult);
-						}
-					}
-				}
-			}
-			else if (foundBase) {
-				for (auto vecData : itBase->second) {
-					const ConditionalInput input(a_ref, a_base);
-					if (input.IsValidAll(vecData.first, a_ref)) {
-						if (getAll) {
-							for (DistributeRecordData swapData : vecData.second | std::ranges::views::reverse) {
-								sfidResult.first = a_ref;
-								sfidResult.second = swapData;
-								newVec.push_back(sfidResult);
-							}
-						}
-						else {
-							std::shuffle(vecData.second.begin(), vecData.second.end(), g);
-							sfidResult.first = a_ref;
-							sfidResult.second = vecData.second.at(0);
-							newVec.push_back(sfidResult);
-						}
-					}
-				}
-			}
-			else {
-				for (auto vecData : itAll->second) {
-					const ConditionalInput input(a_ref, a_base);
-					if (input.IsValidAll(vecData.first, a_ref)) {
-						if (getAll) {
-							for (DistributeRecordData swapData : vecData.second | std::ranges::views::reverse) {
-								sfidResult.first = a_ref;
-								sfidResult.second = swapData;
-								newVec.push_back(sfidResult);
-							}
-						}
-						else {
-							std::shuffle(vecData.second.begin(), vecData.second.end(), g);
-							sfidResult.first = a_ref;
-							sfidResult.second = vecData.second.at(0);
-							newVec.push_back(sfidResult);
-						}
+		const auto itAll = conditionalForms.find(0xFFFFFFFF);
 
+		static thread_local std::mt19937 rng{ std::random_device{}() };
+
+		auto processBucket =
+			[&](const ConditionalEntryVec& entries) {
+			for (const auto& entry : entries)
+			{
+
+				if (!IsValidAll(entry.conditions, a_ref))
+				{
+					continue;
+				}
+
+				if (entry.swapData.empty())
+					continue;
+
+				if (getAll)
+				{
+					for (auto it = entry.swapData.rbegin();
+						it != entry.swapData.rend(); ++it)
+					{
+						results.emplace_back(a_ref, *it);
 					}
 				}
+				else
+				{
+					std::uniform_int_distribution<size_t> dist(
+						0, entry.swapData.size() - 1);
+
+					size_t index = dist(rng);
+					results.emplace_back(a_ref, entry.swapData[index]);
+				}
 			}
-		}
-		return newVec;
+			};
+
+		if (itRef != conditionalForms.end())
+			processBucket(itRef->second);
+		else if (itBase != conditionalForms.end())
+			processBucket(itBase->second);
+		else if (itAll != conditionalForms.end())
+			processBucket(itAll->second);
+
+		return results;
 	}
+
 
 	void Manager::LoadCache() {
 		LoadFormsOnce();
@@ -848,20 +939,13 @@ namespace SpellFactionItemDistributor
 
 	std::vector<SFIDResult> Manager::GetSingleSwapData(TESObjectREFR* a_ref, TESForm* a_base, std::string formType)
 	{
-		FormMap<SwapDataConditional> allFormsConditional = get_form_map(formType);
+		auto& allFormsConditional = get_form_map(formType);
 
 		DistributeRecordData empty;
 		std::vector<SFIDResult> emptyResult;
 		if (const auto it = processedForms.find(a_ref->refID); it != processedForms.end()) {
 			return emptyResult;
 		}
-		/*
-		if (const auto it = cachedForms.find(a_ref->refID); it != cachedForms.end()) {
-			
-			if (string::iequals(formType, "Items") || string::iequals(formType, "Equipment")) {
-				return emptyResult;
-			}
-		} */
 		std::vector<SFIDResult> sfidResult;
 		sfidResult = GetBaseAll(a_ref, a_base, allFormsConditional, formType);
 		return sfidResult;

@@ -184,6 +184,11 @@ namespace SpellFactionItemDistributor
 		Manager* manager = Manager::GetSingleton();
 		if (const auto base = a_ref->baseForm) {
 			manager->LoadFormsOnce();
+			if (manager->processedForms.contains(a_ref->refID))
+			{
+				ThisStdCall(originalAddressNPC, a_ref);
+				return;
+			}
 			//Distribute factions first before the rest for NPC Keywords
 			std::vector<SFIDResult> factionResult = manager->GetSingleSwapData(a_ref, a_ref->baseForm, "Factions");
 			for (SFIDResult faction : factionResult) {
@@ -204,7 +209,33 @@ namespace SpellFactionItemDistributor
 
 	static void __fastcall GenerateNiNodeHookCREA(TESObjectREFR* a_ref, void* edx)
 	{
-		
+		Manager* manager = Manager::GetSingleton();
+		if (const auto base = a_ref->baseForm)
+		{
+			manager->LoadFormsOnce();
+			if (manager->processedForms.contains(a_ref->refID))
+			{
+				ThisStdCall(originalAddressNPC, a_ref);
+				return;
+			}
+			//Distribute factions first before the rest for NPC Keywords
+			std::vector<SFIDResult> factionResult = manager->GetSingleSwapData(a_ref, a_ref->baseForm, "Factions");
+			for (SFIDResult faction : factionResult)
+			{
+				ProcessResult(faction);
+			}
+			//Distribute factions again along with the rest
+			std::vector<std::vector<SFIDResult>> resultVec = manager->GetAllSwapData(a_ref, base);
+			for (std::vector<SFIDResult> result : resultVec)
+			{
+				for (SFIDResult sfid : result)
+				{
+					ProcessResult(sfid);
+				}
+			}
+			manager->processedForms.emplace(a_ref->refID);
+			//AddToCache(a_ref);
+		}
 		ThisStdCall(originalAddressCREA, a_ref);
 	}
 
@@ -220,7 +251,8 @@ namespace SpellFactionItemDistributor
 	{
 		_MESSAGE("-HOOKS-");
 		originalAddressNPC = DetourVtable(0xA6FDE8, reinterpret_cast<UInt32>(GenerateNiNodeHookNPC)); // kVtbl_Character_GenerateNiNode
-		//originalAddressCREA = DetourVtable(0xA71240, reinterpret_cast<UInt32>(GenerateNiNodeHookCREA)); // kVtbl_Creature_GenerateNiNode temporarily disabled due to crashes
+		//originalAddressNPC = DetourVtable(0xA6E1C0, reinterpret_cast<UInt32>(GenerateNiNodeHookNPC)); // kVtbl_Character_GenerateNiNode
+		originalAddressCREA = DetourVtable(0xA71240, reinterpret_cast<UInt32>(GenerateNiNodeHookCREA)); // kVtbl_Creature_GenerateNiNode temporarily disabled due to crashes
 		_MESSAGE("Installed all vtable hooks");
 
 	}
