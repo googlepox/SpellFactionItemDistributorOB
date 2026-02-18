@@ -163,7 +163,9 @@ namespace SpellFactionItemDistributor
 		}
 		else
 		{
-			std::string editorID = EditorIDMapper::ReverseLookup(cell->refID);
+			const char* id = EditorIDMapper::ReverseLookup(cell->refID);
+			if (!id) return false;
+			std::string editorID = id;
 			std::transform(editorID.begin(), editorID.end(),
 				editorID.begin(), ::tolower);
 
@@ -188,7 +190,9 @@ namespace SpellFactionItemDistributor
 		}
 		else
 		{
-			std::string editorID = EditorIDMapper::ReverseLookup(cell->worldSpace->refID);
+			const char* worldspaceEditorID = EditorIDMapper::ReverseLookup(cell->worldSpace->refID);
+			if (!worldspaceEditorID) return false;
+			std::string editorID = worldspaceEditorID;
 			std::transform(editorID.begin(), editorID.end(),
 				editorID.begin(), ::tolower);
 
@@ -233,7 +237,9 @@ namespace SpellFactionItemDistributor
 			}
 			else
 			{
-				std::string editorID = EditorIDMapper::ReverseLookup(region->refID);
+				const char* id = EditorIDMapper::ReverseLookup(region->refID);
+				if (!id) return false;
+				std::string editorID = id;
 				std::transform(editorID.begin(), editorID.end(),
 					editorID.begin(), ::tolower);
 
@@ -265,7 +271,9 @@ namespace SpellFactionItemDistributor
 		}
 		else
 		{
-			std::string editorID = EditorIDMapper::ReverseLookup(ref->baseForm->refID);
+			const char* refEditorID = EditorIDMapper::ReverseLookup(ref->baseForm->refID);
+			if (!refEditorID) return false;
+			std::string editorID = refEditorID;
 			std::transform(editorID.begin(), editorID.end(),
 				editorID.begin(), ::tolower);
 
@@ -309,7 +317,9 @@ namespace SpellFactionItemDistributor
 		}
 		else
 		{
-			std::string editorID = EditorIDMapper::ReverseLookup(npc->race.race->refID);
+			const char* id = EditorIDMapper::ReverseLookup(npc->race.race->refID);
+			if (!id) return false;
+			std::string editorID = id;
 			std::transform(editorID.begin(), editorID.end(),
 				editorID.begin(), ::tolower);
 
@@ -348,7 +358,9 @@ namespace SpellFactionItemDistributor
 			}
 			else
 			{
-				std::string editorID = EditorIDMapper::ReverseLookup(faction->refID);
+				const char* id = EditorIDMapper::ReverseLookup(faction->refID);
+				if (!id) return false;
+				std::string editorID = id;
 				std::transform(editorID.begin(), editorID.end(),
 					editorID.begin(), ::tolower);
 
@@ -391,7 +403,9 @@ namespace SpellFactionItemDistributor
 		}
 		else if (!cond.text.empty())
 		{
-			std::string classEditorID = EditorIDMapper::ReverseLookup(npc->npcClass->refID);
+			const char* id = EditorIDMapper::ReverseLookup(npc->npcClass->refID);
+			if (!id) return false;
+			std::string classEditorID = id;
 
 			std::string keyLower = cond.text;
 			std::string editorLower = classEditorID;
@@ -440,7 +454,9 @@ namespace SpellFactionItemDistributor
 			}
 			else
 			{
-				std::string editorID = EditorIDMapper::ReverseLookup(form->refID);
+				const char* id = EditorIDMapper::ReverseLookup(form->refID);
+				if (!id) return false;
+				std::string editorID = id;
 				std::transform(editorID.begin(), editorID.end(),
 					editorID.begin(), ::tolower);
 
