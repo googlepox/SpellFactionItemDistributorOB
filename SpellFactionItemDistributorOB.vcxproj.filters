@@ -8,9 +8,6 @@
     <ClCompile Include="src\DistributeData.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\Defs.h" />
-    <ClInclude Include="src\Hooks.h" />
-    <ClInclude Include="src\Manager.h" />
     <ClInclude Include="lib\detail\SimpleIni.h">
       <Filter>lib\detail</Filter>
     </ClInclude>
@@ -38,9 +35,23 @@
     <ClInclude Include="lib\srell.hpp">
       <Filter>lib</Filter>
     </ClInclude>
-    <ClInclude Include="src\DistributeData.h" />
     <ClInclude Include="lib\boost\trim.hpp">
       <Filter>lib\boost</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Defs.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="src\DistributeData.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Hooks.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Manager.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\EditorIDMapper\EditorIDMapperAPI.h">
+      <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -55,6 +66,9 @@
     </Filter>
     <Filter Include="lib\boost">
       <UniqueIdentifier>{a1c149af-0776-4747-8770-7636347f2ff5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include">
+      <UniqueIdentifier>{7def82b5-cd60-4eb4-86ff-f69b1ce4ab0b}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

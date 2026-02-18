@@ -1,5 +1,6 @@
 #include "src/Hooks.h"
 #include "src/Manager.h"
+#include "EditorIDMapper/EditorIDMapperAPI.h"
 
 IDebugLog		gLog("SpellFactionItemDistributor.log");
 PluginHandle	g_pluginHandle = kPluginHandle_Invalid;
@@ -93,6 +94,8 @@ bool OBSEPlugin_Load(OBSEInterface* OBSE)
 		g_consoleInterface = static_cast<OBSEConsoleInterface*>(OBSE->QueryInterface(kInterface_Console));
 #endif
 	}
+
+	EditorIDMapper::Init(g_messagingInterface, g_pluginHandle);
 
 	return true;
 }

@@ -1,4 +1,5 @@
 #include "Manager.h"
+#include "EditorIDMapper/EditorIDMapperAPI.h"
 #include "fstream"
 #include "lib/boost/trim.hpp"
 
@@ -162,7 +163,7 @@ namespace SpellFactionItemDistributor
 		}
 		else
 		{
-			std::string editorID = cell->GetEditorName();
+			std::string editorID = EditorIDMapper::ReverseLookup(cell->refID);
 			std::transform(editorID.begin(), editorID.end(),
 				editorID.begin(), ::tolower);
 
@@ -187,7 +188,7 @@ namespace SpellFactionItemDistributor
 		}
 		else
 		{
-			std::string editorID = cell->worldSpace->GetEditorName();
+			std::string editorID = EditorIDMapper::ReverseLookup(cell->worldSpace->refID);
 			std::transform(editorID.begin(), editorID.end(),
 				editorID.begin(), ::tolower);
 
@@ -232,7 +233,7 @@ namespace SpellFactionItemDistributor
 			}
 			else
 			{
-				std::string editorID = region->GetEditorName();
+				std::string editorID = EditorIDMapper::ReverseLookup(region->refID);
 				std::transform(editorID.begin(), editorID.end(),
 					editorID.begin(), ::tolower);
 
@@ -264,7 +265,7 @@ namespace SpellFactionItemDistributor
 		}
 		else
 		{
-			std::string editorID = ref->baseForm->GetEditorName();
+			std::string editorID = EditorIDMapper::ReverseLookup(ref->baseForm->refID);
 			std::transform(editorID.begin(), editorID.end(),
 				editorID.begin(), ::tolower);
 
@@ -308,7 +309,7 @@ namespace SpellFactionItemDistributor
 		}
 		else
 		{
-			std::string editorID = npc->race.race->GetEditorName();
+			std::string editorID = EditorIDMapper::ReverseLookup(npc->race.race->refID);
 			std::transform(editorID.begin(), editorID.end(),
 				editorID.begin(), ::tolower);
 
@@ -347,7 +348,7 @@ namespace SpellFactionItemDistributor
 			}
 			else
 			{
-				std::string editorID = faction->GetEditorName();
+				std::string editorID = EditorIDMapper::ReverseLookup(faction->refID);
 				std::transform(editorID.begin(), editorID.end(),
 					editorID.begin(), ::tolower);
 
@@ -390,7 +391,7 @@ namespace SpellFactionItemDistributor
 		}
 		else if (!cond.text.empty())
 		{
-			std::string classEditorID = npc->npcClass->GetEditorName();
+			std::string classEditorID = EditorIDMapper::ReverseLookup(npc->npcClass->refID);
 
 			std::string keyLower = cond.text;
 			std::string editorLower = classEditorID;
@@ -439,7 +440,7 @@ namespace SpellFactionItemDistributor
 			}
 			else
 			{
-				std::string editorID = form->GetEditorName();
+				std::string editorID = EditorIDMapper::ReverseLookup(form->refID);
 				std::transform(editorID.begin(), editorID.end(),
 					editorID.begin(), ::tolower);
 
@@ -625,17 +626,26 @@ namespace SpellFactionItemDistributor
 	{
 		_MESSAGE("-INI-");
 
-		const std::filesystem::path sfidFolder{ R"(Data\SpellFactionItemDistributor)" };
-		if (!exists(sfidFolder)) {
+		std::string sfidFolderPath = R"(Data\OBSE\Plugins\SpellFactionItemDistributor)";
+		std::string sfidFolderBackupPath = R"(Data\SpellFactionItemDistributor)";
+
+		const std::filesystem::path sfidFolder{ sfidFolderPath };
+		const std::filesystem::path sfidFolderBackup{ sfidFolderBackupPath };
+		if (!exists(sfidFolder) && !exists(sfidFolderBackup)) {
 			_WARNING("SFID folder not found...");
 			return;
 		}
 
-		const auto configs = dist::get_configs(R"(Data\SpellFactionItemDistributor)");
+		std::vector<std::string> configs = dist::get_configs(sfidFolderPath);
 
 		if (configs.empty()) {
-			_WARNING("No .ini files were found in Data\\SpellFactionItemDistributor folder, aborting...");
-			return;
+			_WARNING("No .ini files were found in Data\\OBSE\\Plugins\\SpellFactionItemDistributor folder, falling back to Data\\SpellFactionItemDistributor...");
+			configs = dist::get_configs(sfidFolderBackupPath);
+			if (configs.empty())
+			{
+				_WARNING("No .ini files were found in Data\\SpellFactionItemDistributor folder, aborting...");
+				return;
+			}
 		}
 
 		_MESSAGE("%u matching inis found", configs.size());
@@ -736,16 +746,6 @@ namespace SpellFactionItemDistributor
 			_MESSAGE("BaseID %08X has %u entries",
 				baseID,
 				entries.size());
-			for (const auto& entry : entries)
-			{
-				_MESSAGE("conditions size : %u", entry.conditions.size());
-				for (const auto& condition:  entry.conditions)
-				{
-					_MESSAGE("condition text, %s", condition.text.c_str());
-					_MESSAGE("condition formID, 0x%08X", condition.formID);
-					_MESSAGE("condition type, %u", condition.type);
-				}
-			}
 		}
 		//_MESSAGE("%u conditional Items processed for ALL\n", applyToAllItems.size());
 
