@@ -1,5 +1,6 @@
 #include "DistributeData.h"
 #include "EditorIDMapper/EditorIDMapperAPI.h"
+#include "lib/boost/trim.hpp"
 
 #define DEGTORAD 0.01745329252f
 
@@ -185,6 +186,37 @@ namespace SpellFactionItemDistributor
 					a_path);
 				DistributeRecordData swapData(swapFormID, input, baseFormID);
 				a_func(baseFormID, swapData);
+			}
+			else if (formPair[1].contains("Keywords"))
+			{
+				size_t openParen = formPair[1].find('(');
+				size_t closeParen = formPair[1].find(')');
+
+				if (openParen != std::string::npos && closeParen != std::string::npos && closeParen > openParen)
+				{
+					std::string keywordList = formPair[1].substr(openParen + 1, closeParen - openParen - 1);
+
+					std::vector<std::string> keywords = string::split(keywordList, ",");
+
+					for (auto& kw : keywords)
+					{
+						boost::trim(kw);
+					}
+
+					const Input input(
+						swapFormID, // items
+						formPair.size() > 2 ? formPair[2] : std::string{},  // traits
+						a_str,
+						a_path);
+					DistributeRecordData swapData(swapFormID, input, baseFormID);
+					swapData.keywords = keywords;
+
+					a_func(baseFormID, swapData);
+				}
+				else
+				{
+					_WARNING("Malformed KeywordRef syntax in '%s'", formPair[1].c_str());
+				}
 			}
 			else {
 				_ERROR("\t\t\tfailed to process %s (SWAP formID not found)", a_str.c_str());

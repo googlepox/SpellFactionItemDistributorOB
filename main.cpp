@@ -1,6 +1,7 @@
 #include "src/Hooks.h"
 #include "src/Manager.h"
 #include "EditorIDMapper/EditorIDMapperAPI.h"
+#include "OBSEKeywords/KeywordAPI.h"
 
 IDebugLog		gLog("SpellFactionItemDistributor.log");
 PluginHandle	g_pluginHandle = kPluginHandle_Invalid;
@@ -19,20 +20,18 @@ OBSEConsoleInterface* g_consoleInterface{};
 OBSEEventManagerInterface* g_eventInterface{};
 #endif
 
-// This is a message handler for OBSE events
-// With this, plugins can listen to messages such as whenever the game loads
 void MessageHandler(OBSEMessagingInterface::Message* msg)
 {
-	switch (msg->type)
+	if (msg->type == OBSEMessagingInterface::kMessage_PreLoadGame)
 	{
-	case OBSEMessagingInterface::kMessage_PostPostLoad: {
 		SpellFactionItemDistributor::Install();
-	} break;
-	case OBSEMessagingInterface::kMessage_GameInitialized: {
-		//SpellFactionItemDistributor::Manager::GetSingleton()->LoadCache();
-	} break;
-	default: break;
 	}
+}
+
+void UnifiedMessageHandler(OBSEMessagingInterface::Message* msg)
+{
+	EditorIDMapper::MessageHandler(msg);
+	KeywordAPI::MessageHandler(msg);
 }
 
 bool OBSEPlugin_Query(const OBSEInterface* OBSE, PluginInfo* info)
@@ -66,8 +65,6 @@ bool OBSEPlugin_Query(const OBSEInterface* OBSE, PluginInfo* info)
 		}
 	}
 
-	// version checks pass
-	// any version compatibility checks should be done here
 	return true;
 }
 
@@ -75,17 +72,14 @@ bool OBSEPlugin_Load(OBSEInterface* OBSE)
 {
 	g_pluginHandle = OBSE->GetPluginHandle();
 
-	// save the OBSE interface in case we need it later
 	g_OBSEInterface = OBSE;
 
-	// register to receive messages from OBSE
 	g_messagingInterface = static_cast<OBSEMessagingInterface*>(OBSE->QueryInterface(kInterface_Messaging));
 	g_messagingInterface->RegisterListener(g_pluginHandle, "OBSE", MessageHandler);
 
 	if (!OBSE->isEditor)
 	{
 #if OBLIVION
-		// script and function-related interfaces
 		g_script = static_cast<OBSEScriptInterface*>(OBSE->QueryInterface(kInterface_Script));
 		g_stringInterface = static_cast<OBSEStringVarInterface*>(OBSE->QueryInterface(kInterface_StringVar));
 		g_arrayInterface = static_cast<OBSEArrayVarInterface*>(OBSE->QueryInterface(kInterface_ArrayVar));
@@ -95,6 +89,9 @@ bool OBSEPlugin_Load(OBSEInterface* OBSE)
 #endif
 	}
 
+	g_messagingInterface->RegisterListener(g_pluginHandle, nullptr, UnifiedMessageHandler);
+
+	KeywordAPI::Init(g_messagingInterface, g_pluginHandle);
 	EditorIDMapper::Init(g_messagingInterface, g_pluginHandle);
 
 	return true;

@@ -53,10 +53,13 @@ namespace SpellFactionItemDistributor
 		static void GetFormsAll(const std::string& a_path, const std::string& a_str, std::function<void(std::uint32_t, DistributeRecordData&)> a_func);
 
 		static void GetForms(const std::string& a_path, const std::string& a_str, std::function<void(std::uint32_t, DistributeRecordData&)> a_func);
+		
+		static std::vector<std::string> GetKeywords(std::string keywordString);
 
 		// members
 		FormIDOrSet formIDSet{};
 		FormIDOrSet formIDSetBase{};
+		std::vector<std::string> keywords;
 	};
 
 	using SwapDataVec = std::vector<DistributeRecordData>;

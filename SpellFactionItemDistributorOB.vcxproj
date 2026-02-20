@@ -129,6 +129,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EditorIDMapper\EditorIDMapperAPI.h" />
+    <ClInclude Include="..\OBSEKeywords\KeywordAPI.h" />
     <ClInclude Include="lib\boost\trim.hpp" />
     <ClInclude Include="lib\detail\SimpleIni.h" />
     <ClInclude Include="lib\detail\XoshiroCpp.hpp" />

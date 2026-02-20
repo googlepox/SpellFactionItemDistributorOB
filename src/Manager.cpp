@@ -1,5 +1,6 @@
 #include "Manager.h"
 #include "EditorIDMapper/EditorIDMapperAPI.h"
+#include "OBSEKeywords/KeywordAPI.h"
 #include "fstream"
 #include "lib/boost/trim.hpp"
 
@@ -14,6 +15,7 @@ namespace SpellFactionItemDistributor
 		if (formString == "Equipment") return equippable;
 		if (formString == "Packages") return package;
 		if (formString == "Items") return item;
+		if (formString == "Keywords") return keyword;
 	}
 
 	FormMap<SwapDataVec>& Manager::get_form_vec(const std::string& a_str)
@@ -38,6 +40,11 @@ namespace SpellFactionItemDistributor
 		}
 		case (package): {
 			return allPackages;
+			break;
+		}
+		case (keyword):
+		{
+			return allKeywords;
 			break;
 		}
 		default:
@@ -70,6 +77,11 @@ namespace SpellFactionItemDistributor
 			return allPackagesConditional;
 			break;
 		}
+		case (keyword):
+		{
+			return allKeywordsConditional;
+			break;
+		}
 		default:
 			break;
 		}
@@ -97,6 +109,11 @@ namespace SpellFactionItemDistributor
 		}
 		case (package): {
 			return applyToAllPackages;
+			break;
+		}
+		case (keyword):
+		{
+			return applyToAllKeywords;
 			break;
 		}
 		default:
@@ -146,8 +163,6 @@ namespace SpellFactionItemDistributor
 				entries.push_back(std::move(entry));
 			});
 	}
-
-
 
 	static bool HasKeywordCell(TESObjectCELL* cell,
 		const CompiledCondition& cond)
@@ -501,6 +516,26 @@ namespace SpellFactionItemDistributor
 		return cond.isExclusion ? !match : match;
 	}
 
+	static bool HasKeywordKeyword(TESObjectREFR* ref,
+		const CompiledCondition& cond)
+	{
+		if (!ref || !ref->baseForm)
+			return false;
+
+		bool match = false;
+
+		const char* keyword = cond.text.c_str();
+
+		if (!keyword) return false;
+
+		bool hasKeywordBase = KeywordAPI::HasKeyword(ref->baseForm->refID, keyword);
+		bool hasKeywordRef = KeywordAPI::HasKeyword(ref->refID, keyword);
+
+		match = (hasKeywordBase || hasKeywordRef);
+
+		return cond.isExclusion ? !match : match;
+	}
+
 
 	bool IsValid(const CompiledCondition& cond,
 		TESObjectREFR* ref)
@@ -539,6 +574,9 @@ namespace SpellFactionItemDistributor
 
 		case ConditionType::Class:
 			return HasKeywordClass(ref, cond);
+
+		case ConditionType::Keyword:
+			return HasKeywordKeyword(ref, cond);
 
 		default:
 			return false;
@@ -615,6 +653,7 @@ namespace SpellFactionItemDistributor
 		else if (typeStr == "name")     compiled.type = ConditionType::Name;
 		else if (typeStr == "mod")      compiled.type = ConditionType::Mod;
 		else if (typeStr == "editorid")      compiled.type = ConditionType::EditorID;
+		else if (typeStr == "keyword")      compiled.type = ConditionType::Keyword;
 		else                            compiled.type = ConditionType::EditorID;
 
 		if (UInt32 id = DistributeRecordData::GetFormID(valueStr.c_str()); id != 0)
@@ -750,6 +789,17 @@ namespace SpellFactionItemDistributor
 						}
 					}
 				}
+				else if (splitSection[0] == "Keywords")
+				{
+					if (!values.empty())
+					{
+						_MESSAGE("\t\t\t%u keywords found", values.size());
+						for (const auto& key : values)
+						{
+							get_forms(path, key.pItem, processedConditions, splitSection[0]);
+						}
+					}
+				}
 			}
 		}
 
@@ -798,6 +848,14 @@ namespace SpellFactionItemDistributor
 		//_MESSAGE("%u Packages processed", allPackages.size());
 		_MESSAGE("%u Packages processed", allPackagesConditional.size());
 		for (const auto& [baseID, entries] : allPackagesConditional)
+		{
+			_MESSAGE("BaseID %08X has %u entries",
+				baseID,
+				entries.size());
+		}
+
+		_MESSAGE("%u Keywords processed", allKeywordsConditional.size());
+		for (const auto& [baseID, entries] : allKeywordsConditional)
 		{
 			_MESSAGE("BaseID %08X has %u entries",
 				baseID,
@@ -984,6 +1042,10 @@ namespace SpellFactionItemDistributor
 		}
 		if (allPackagesConditional.size() > 0) {
 			resultVec.push_back(GetSingleSwapData(a_ref, a_base, "Packages"));
+		}
+		if (allKeywordsConditional.size() > 0)
+		{
+			resultVec.push_back(GetSingleSwapData(a_ref, a_base, "Keywords"));
 		}
 
 		return resultVec;

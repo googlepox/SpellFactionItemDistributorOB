@@ -11,7 +11,8 @@ namespace SpellFactionItemDistributor
 		faction,
 		package,
 		equippable,
-		item
+		item,
+		keyword
 	};
 
 	enum class ConditionType
@@ -26,6 +27,7 @@ namespace SpellFactionItemDistributor
 		Cell,
 		Worldspace,
 		Region,
+		Keyword,
 		All
 	};
 
@@ -141,6 +143,12 @@ namespace SpellFactionItemDistributor
 			const std::vector<CompiledCondition>& conditions,
 			std::string formType);
 
+		void get_forms_keywords(
+			const std::string& a_path,
+			const std::string& a_str,
+			const std::vector<CompiledCondition>& conditions,
+			const std::vector<std::string>& keywords);
+
 		FormMap<SwapDataVec> allItems{};
 		ConditionalFormMap allItemsConditional{};
 		ConditionalFormMap applyToAllItems{};
@@ -160,6 +168,10 @@ namespace SpellFactionItemDistributor
 		FormMap<SwapDataVec> allPackages{};
 		ConditionalFormMap allPackagesConditional{};
 		ConditionalFormMap applyToAllPackages{};
+
+		FormMap<SwapDataVec> allKeywords{};
+		ConditionalFormMap allKeywordsConditional{};
+		ConditionalFormMap applyToAllKeywords{};
 
 
 		std::unordered_set<std::uint32_t> swappedLeveledItemRefs{};

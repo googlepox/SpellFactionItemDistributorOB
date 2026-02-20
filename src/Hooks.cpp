@@ -2,6 +2,7 @@
 #include "Manager.h"
 #include "obse/GameForms.h"
 #include "obse/GameObjects.h"
+#include <OBSEKeywords/KeywordAPI.h>
 
 namespace SpellFactionItemDistributor
 {
@@ -151,6 +152,15 @@ namespace SpellFactionItemDistributor
 		if (!ref || swapData.traits.amount == 0) {
 			return;
 		}
+
+		if (!swapData.keywords.empty() && KeywordAPI::IsReady())
+		{
+			for (const auto& keyword : swapData.keywords)
+			{
+				bool add1 = KeywordAPI::AddKeyword(ref->refID, keyword.c_str());
+				bool add2 = KeywordAPI::AddKeyword(ref->baseForm->refID, keyword.c_str());
+			}
+		}
 		if (std::holds_alternative<UInt32>(swapData.formToAdd)) {
 			const auto formToAdd = std::get<UInt32>(swapData.formToAdd);
 			if (formToAdd == 0) {
@@ -189,12 +199,18 @@ namespace SpellFactionItemDistributor
 				ThisStdCall(originalAddressNPC, a_ref);
 				return;
 			}
-			//Distribute factions first before the rest for NPC Keywords
+			//Distribute keywords first
+			std::vector<SFIDResult> keywordResult = manager->GetSingleSwapData(a_ref, a_ref->baseForm, "Keywords");
+			for (SFIDResult keyword : keywordResult)
+			{
+				ProcessResult(keyword);
+			}
+			//Distribute factions second before the rest
 			std::vector<SFIDResult> factionResult = manager->GetSingleSwapData(a_ref, a_ref->baseForm, "Factions");
 			for (SFIDResult faction : factionResult) {
 				ProcessResult(faction);
 			}
-			//Distribute factions again along with the rest
+			//Distribute factions and keywords again along with the rest
 			std::vector<std::vector<SFIDResult>> resultVec = manager->GetAllSwapData(a_ref, base);
 			for (std::vector<SFIDResult> result : resultVec) {
 				for (SFIDResult sfid : result) {
@@ -218,7 +234,13 @@ namespace SpellFactionItemDistributor
 				ThisStdCall(originalAddressNPC, a_ref);
 				return;
 			}
-			//Distribute factions first before the rest for NPC Keywords
+			//Distribute keywords first
+			std::vector<SFIDResult> keywordResult = manager->GetSingleSwapData(a_ref, a_ref->baseForm, "Keywords");
+			for (SFIDResult keyword : keywordResult)
+			{
+				ProcessResult(keyword);
+			}
+			//Distribute factions second before the rest
 			std::vector<SFIDResult> factionResult = manager->GetSingleSwapData(a_ref, a_ref->baseForm, "Factions");
 			for (SFIDResult faction : factionResult)
 			{
