@@ -6,6 +6,7 @@
 
 namespace SpellFactionItemDistributor
 {
+	bool g_hooksInstalled = false;
 
 	static void AddToCache(TESObjectREFR* ref) {
 		Manager* manager = Manager::GetSingleton();
@@ -22,7 +23,7 @@ namespace SpellFactionItemDistributor
 
 	static void AddEquipItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
 		ref->AddItem(form, nullptr, amount);
-		ref->Equip(form, amount, &ref->baseExtraList, 0);
+		ref->Equip(form, amount, nullptr, 0);
 	}
 
 	static void AddLevItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
@@ -90,7 +91,6 @@ namespace SpellFactionItemDistributor
 			}
 		}
 		if (formToAdd) {
-			TESNPC* npc = dynamic_cast<TESNPC*>(a_ref);
 			switch (formToAdd->GetFormType())
 			{
 			case (FormType::kFormType_Misc):
@@ -271,11 +271,15 @@ namespace SpellFactionItemDistributor
 
 	void Install()
 	{
-		_MESSAGE("-HOOKS-");
-		originalAddressNPC = DetourVtable(0xA6FDE8, reinterpret_cast<UInt32>(GenerateNiNodeHookNPC)); // kVtbl_Character_GenerateNiNode
-		//originalAddressNPC = DetourVtable(0xA6E1C0, reinterpret_cast<UInt32>(GenerateNiNodeHookNPC)); // kVtbl_Character_GenerateNiNode
-		originalAddressCREA = DetourVtable(0xA71240, reinterpret_cast<UInt32>(GenerateNiNodeHookCREA)); // kVtbl_Creature_GenerateNiNode temporarily disabled due to crashes
-		_MESSAGE("Installed all vtable hooks");
+		if (!g_hooksInstalled)
+		{
+			_MESSAGE("-HOOKS-");
+			originalAddressNPC = DetourVtable(0xA6FDE8, reinterpret_cast<UInt32>(GenerateNiNodeHookNPC)); // kVtbl_Character_GenerateNiNode
+			//originalAddressNPC = DetourVtable(0xA6E1C0, reinterpret_cast<UInt32>(GenerateNiNodeHookNPC)); // kVtbl_Character_GenerateNiNode
+			originalAddressCREA = DetourVtable(0xA71240, reinterpret_cast<UInt32>(GenerateNiNodeHookCREA)); // kVtbl_Creature_GenerateNiNode temporarily disabled due to crashes
+			_MESSAGE("Installed all vtable hooks");
+			g_hooksInstalled = true;
+		}
 
 	}
 }

@@ -693,7 +693,7 @@ namespace SpellFactionItemDistributor
 
 		std::vector<std::string> configs = dist::get_configs(sfidFolderPath);
 
-		if (configs.empty()) {
+		if (configs.empty() && std::filesystem::exists(sfidFolderBackupPath)) {
 			_WARNING("No .ini files were found in Data\\OBSE\\Plugins\\SpellFactionItemDistributor folder, falling back to Data\\SpellFactionItemDistributor...");
 			configs = dist::get_configs(sfidFolderBackupPath);
 			if (configs.empty())
@@ -757,7 +757,7 @@ namespace SpellFactionItemDistributor
 						}
 					}
 				}
-				else if (splitSection[0] == "Equipment") {
+				else if (splitSection[0] == "Equipment" || splitSection[0] == "Equippables") {
 					if (!values.empty()) {
 						_MESSAGE("\t\t\t%u equippables found", values.size());
 						for (const auto& key : values) {
