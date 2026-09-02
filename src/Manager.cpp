@@ -1,6 +1,7 @@
 #include "Manager.h"
 #include "EditorIDMapper/EditorIDMapperAPI.h"
 #include "OBSEKeywords/KeywordAPI.h"
+#include "obse/GameAPI.h"
 #include "fstream"
 #include "lib/boost/trim.hpp"
 
@@ -12,10 +13,11 @@ namespace SpellFactionItemDistributor
 		if (formString == "Forms") return form;
 		if (formString == "Spells") return spell;
 		if (formString == "Factions") return faction;
-		if (formString == "Equipment") return equippable;
+		if (formString == "Equipment" || formString == "Equippables") return equippable;
 		if (formString == "Packages") return package;
 		if (formString == "Items") return item;
 		if (formString == "Keywords") return keyword;
+		return item;
 	}
 
 	FormMap<SwapDataVec>& Manager::get_form_vec(const std::string& a_str)
@@ -83,7 +85,7 @@ namespace SpellFactionItemDistributor
 			break;
 		}
 		default:
-			break;
+			return allItemsConditional;
 		}
 	}
 
@@ -117,7 +119,7 @@ namespace SpellFactionItemDistributor
 			break;
 		}
 		default:
-			break;
+			return applyToAllItems;
 		}
 	}
 
@@ -176,7 +178,7 @@ namespace SpellFactionItemDistributor
 		{
 			match = (cell->refID == cond.formID);
 		}
-		else
+		if (!match && !cond.text.empty())
 		{
 			const char* id = EditorIDMapper::ReverseLookup(cell->refID);
 			if (!id) return false;
@@ -203,7 +205,7 @@ namespace SpellFactionItemDistributor
 		{
 			match = (cell->worldSpace->refID == cond.formID);
 		}
-		else
+		if (!match && !cond.text.empty())
 		{
 			const char* worldspaceEditorID = EditorIDMapper::ReverseLookup(cell->worldSpace->refID);
 			if (!worldspaceEditorID) return false;
@@ -250,7 +252,7 @@ namespace SpellFactionItemDistributor
 					break;
 				}
 			}
-			else
+			if (!match && !cond.text.empty())
 			{
 				const char* id = EditorIDMapper::ReverseLookup(region->refID);
 				if (!id) return false;
@@ -284,7 +286,7 @@ namespace SpellFactionItemDistributor
 		{
 			match = (ref->baseForm->refID == cond.formID);
 		}
-		else
+		if (!match && !cond.text.empty())
 		{
 			const char* refEditorID = EditorIDMapper::ReverseLookup(ref->baseForm->refID);
 			if (!refEditorID) return false;
@@ -320,7 +322,11 @@ namespace SpellFactionItemDistributor
 		if (!ref)
 			return false;
 
-		auto* npc = static_cast<TESNPC*>(ref->baseForm);
+		auto* actor = dynamic_cast<TESActorBase*>(ref->baseForm);
+		if (!actor)
+			return false;
+
+		auto* npc = dynamic_cast<TESNPC*>(actor);
 		if (!npc || !npc->race.race)
 			return false;
 
@@ -330,7 +336,7 @@ namespace SpellFactionItemDistributor
 		{
 			match = (npc->race.race->refID == cond.formID);
 		}
-		else
+		if (!match && !cond.text.empty())
 		{
 			const char* id = EditorIDMapper::ReverseLookup(npc->race.race->refID);
 			if (!id) return false;
@@ -351,13 +357,13 @@ namespace SpellFactionItemDistributor
 		if (!ref)
 			return false;
 
-		auto* npc = static_cast<TESNPC*>(ref->baseForm);
-		if (!npc)
+		auto* actor = dynamic_cast<TESActorBase*>(ref->baseForm);
+		if (!actor)
 			return false;
 
 		bool match = false;
 
-		auto* entry = &npc->actorBaseData.factionList;
+		auto* entry = &actor->actorBaseData.factionList;
 
 		while (entry && entry->data)
 		{
@@ -371,7 +377,7 @@ namespace SpellFactionItemDistributor
 					break;
 				}
 			}
-			else
+			if (!match && !cond.text.empty())
 			{
 				const char* id = EditorIDMapper::ReverseLookup(faction->refID);
 				if (!id) return false;
@@ -416,7 +422,7 @@ namespace SpellFactionItemDistributor
 		{
 			matched = (cond.formID == classFormID);
 		}
-		else if (!cond.text.empty())
+		if (!matched)
 		{
 			const char* id = EditorIDMapper::ReverseLookup(npc->npcClass->refID);
 			if (!id) return false;
@@ -467,7 +473,7 @@ namespace SpellFactionItemDistributor
 					break;
 				}
 			}
-			else
+			if (!match && !cond.text.empty())
 			{
 				const char* id = EditorIDMapper::ReverseLookup(form->refID);
 				if (!id) return false;
@@ -508,7 +514,7 @@ namespace SpellFactionItemDistributor
 		{
 			match = false;
 		}
-		else
+		if (!match && !cond.text.empty())
 		{
 			match = (modName.find(cond.text) != std::string::npos);
 		}
@@ -537,6 +543,145 @@ namespace SpellFactionItemDistributor
 	}
 
 
+	static bool HasKeywordTrait(TESObjectREFR* ref,
+		const CompiledCondition& cond)
+	{
+		if (!ref || !ref->baseForm)
+			return false;
+
+		auto* actor = dynamic_cast<TESActorBase*>(ref->baseForm);
+		if (!actor)
+			return false;
+
+		auto* npc = dynamic_cast<TESNPC*>(actor);
+		bool match = false;
+
+		if (cond.text == "female") {
+			match = npc && npc->actorBaseData.IsFemale();
+		}
+		else if (cond.text == "male") {
+			match = npc && !npc->actorBaseData.IsFemale();
+		}
+		else if (cond.text == "unique") {
+			match = npc
+				&& !npc->actorBaseData.IsRespawning()
+				&& (ref->refID >> 24) != 0xFF;
+		}
+		else if (cond.text == "summonable") {
+			match = npc && npc->actorBaseData.IsSummonable();
+		}
+		else if (cond.text == "leveled") {
+			match = npc && npc->actorBaseData.IsPCLevelOffset();
+		}
+		else if (cond.text == "teammate") {
+			auto* player = *g_thePlayer;
+			if (player) {
+				auto* xData = player->baseExtraList.GetByType(kExtraData_Follower);
+				if (xData) {
+					auto* xFollower = static_cast<ExtraFollower*>(xData);
+					for (auto* cur = xFollower->followers; cur; cur = cur->next) {
+						if (cur->character && cur->character->refID == ref->refID) {
+							match = true;
+							break;
+						}
+					}
+				}
+			}
+		}
+		else if (cond.text == "dead") {
+			match = ref->IsDead(true);
+		}
+
+		return cond.isExclusion ? !match : match;
+	}
+
+	static bool HasKeywordActorType(TESObjectREFR* ref,
+		const CompiledCondition& cond)
+	{
+		if (!ref || !ref->baseForm)
+			return false;
+
+		auto* actor = dynamic_cast<TESActorBase*>(ref->baseForm);
+		if (!actor)
+			return false;
+
+		bool isNPC = (dynamic_cast<TESNPC*>(actor) != nullptr);
+		bool isCreature = (dynamic_cast<TESCreature*>(actor) != nullptr);
+
+		bool match = false;
+		if (cond.text == "npc")
+			match = isNPC;
+		else if (cond.text == "creature")
+			match = isCreature;
+
+		return cond.isExclusion ? !match : match;
+	}
+
+	static bool HasKeywordStats(TESObjectREFR* ref,
+		const CompiledCondition& cond)
+	{
+		if (!ref || !ref->baseForm)
+			return false;
+
+		float val = 0.0f;
+		if (cond.formID == kActorVal_BaseLevel) {
+			auto* actorBase = OBLIVION_CAST(ref->baseForm, TESForm, TESActorBase);
+			if (!actorBase)
+				return false;
+			val = static_cast<float>(actorBase->actorBaseData.level);
+		}
+		else if (cond.formID == kActorVal_ActualLevel) {
+			auto* actorBase = OBLIVION_CAST(ref->baseForm, TESForm, TESActorBase);
+			if (!actorBase)
+				return false;
+			SInt16 level = actorBase->actorBaseData.level;
+			if (actorBase->actorBaseData.flags & TESActorBaseData::kFlag_PCLevelOffset) {
+				if (auto* player = *g_thePlayer) {
+					auto* playerBase = OBLIVION_CAST(player->baseForm, TESForm, TESActorBase);
+					if (playerBase) {
+						level += playerBase->actorBaseData.level;
+						if (level < actorBase->actorBaseData.minLevel)
+							level = actorBase->actorBaseData.minLevel;
+						if (level > actorBase->actorBaseData.maxLevel)
+							level = actorBase->actorBaseData.maxLevel;
+					}
+				}
+			}
+			val = static_cast<float>(level);
+		}
+		else {
+			auto* actor = OBLIVION_CAST(ref, TESObjectREFR, Actor);
+			if (!actor)
+				return false;
+			val = static_cast<float>(actor->GetBaseActorValue(cond.formID));
+		}
+
+		bool match = false;
+		switch (cond.compareOp)
+		{
+		case CompareOp::GE:
+			match = (val >= cond.threshold);
+			break;
+		case CompareOp::LE:
+			match = (val <= cond.threshold);
+			break;
+		case CompareOp::GT:
+			match = (val > cond.threshold);
+			break;
+		case CompareOp::LT:
+			match = (val < cond.threshold);
+			break;
+		case CompareOp::EQ:
+			match = (val == cond.threshold);
+			break;
+		case CompareOp::NE:
+			match = (val != cond.threshold);
+			break;
+		}
+
+		return cond.isExclusion ? !match : match;
+	}
+
 	bool IsValid(const CompiledCondition& cond,
 		TESObjectREFR* ref)
 	{
@@ -544,6 +689,9 @@ namespace SpellFactionItemDistributor
 		{
 		case ConditionType::All:
 			return true;
+
+		case ConditionType::ActorType:
+			return HasKeywordActorType(ref, cond);
 
 		case ConditionType::Cell:
 			return HasKeywordCell(ref->parentCell, cond);
@@ -578,6 +726,12 @@ namespace SpellFactionItemDistributor
 		case ConditionType::Keyword:
 			return HasKeywordKeyword(ref, cond);
 
+		case ConditionType::Trait:
+			return HasKeywordTrait(ref, cond);
+
+		case ConditionType::Stats:
+			return HasKeywordStats(ref, cond);
+
 		default:
 			return false;
 		}
@@ -596,7 +750,6 @@ namespace SpellFactionItemDistributor
 			if (!IsValid(cond, ref))
 				return false;
 		}
-
 		return true;
 	}
 
@@ -654,12 +807,63 @@ namespace SpellFactionItemDistributor
 		else if (typeStr == "mod")      compiled.type = ConditionType::Mod;
 		else if (typeStr == "editorid")      compiled.type = ConditionType::EditorID;
 		else if (typeStr == "keyword")      compiled.type = ConditionType::Keyword;
+		else if (typeStr == "trait")       compiled.type = ConditionType::Trait;
+		else if (typeStr == "actortype")   compiled.type = ConditionType::ActorType;
+		else if (typeStr == "stats") {
+			compiled.type = ConditionType::Stats;
+
+			auto opPos = valueStr.find_first_of(">=<!");
+			if (opPos == std::string::npos) {
+				_ERROR("Stats condition missing operator: %s", rawCondition.c_str());
+				return compiled;
+			}
+
+			std::string avName = valueStr.substr(0, opPos);
+			boost::trim(avName);
+
+			std::string opStr;
+			if (opPos + 1 < valueStr.size() && valueStr[opPos + 1] == '=') {
+				opStr = valueStr.substr(opPos, 2);
+			}
+			else {
+				opStr = valueStr.substr(opPos, 1);
+			}
+
+			std::string thresholdStr = valueStr.substr(opPos + opStr.size());
+			boost::trim(thresholdStr);
+
+			if (avName == "baselevel") {
+				compiled.formID = kActorVal_BaseLevel;
+			}
+			else if (avName == "level") {
+				compiled.formID = kActorVal_ActualLevel;
+			}
+			else {
+				compiled.formID = GetActorValueForString(avName.c_str());
+				if (compiled.formID >= kActorVal_OblivionMax) {
+					_ERROR("Stats condition unknown actor value: %s", avName.c_str());
+					return compiled;
+				}
+			}
+
+			if (opStr == ">=") compiled.compareOp = CompareOp::GE;
+			else if (opStr == "<=") compiled.compareOp = CompareOp::LE;
+			else if (opStr == ">")  compiled.compareOp = CompareOp::GT;
+			else if (opStr == "<")  compiled.compareOp = CompareOp::LT;
+			else if (opStr == "=" || opStr == "==") compiled.compareOp = CompareOp::EQ;
+			else if (opStr == "!=") compiled.compareOp = CompareOp::NE;
+
+			compiled.threshold = string::to_num<float>(thresholdStr);
+			compiled.text.clear();
+
+			return compiled;
+		}
 		else                            compiled.type = ConditionType::EditorID;
 
 		if (UInt32 id = DistributeRecordData::GetFormID(valueStr.c_str()); id != 0)
 		{
 			compiled.formID = id;
-			compiled.text.clear();
+			compiled.text = std::move(valueStr);
 		}
 		else
 		{
@@ -672,13 +876,26 @@ namespace SpellFactionItemDistributor
 
 	void Manager::LoadFormsOnce()
 	{
-		std::call_once(init, [this] {
+		bool expected = false;
+		if (formsLoaded.compare_exchange_strong(expected, true, std::memory_order_acq_rel)) {
 			LoadForms();
-			});
+		}
 	}
 
 	void Manager::LoadForms()
 	{
+		allItemsConditional.clear();
+		applyToAllItems.clear();
+		allEquipmentConditional.clear();
+		applyToAllEquipment.clear();
+		allSpellsConditional.clear();
+		applyToAllSpells.clear();
+		allFactionsConditional.clear();
+		applyToAllFactions.clear();
+		allPackagesConditional.clear();
+		applyToAllPackages.clear();
+		allKeywordsConditional.clear();
+		applyToAllKeywords.clear();
 		_MESSAGE("-INI-");
 
 		std::string sfidFolderPath = R"(Data\OBSE\Plugins\SpellFactionItemDistributor)";
@@ -732,71 +949,81 @@ namespace SpellFactionItemDistributor
 				};
 
 			for (auto& [section, comment, keyOrder] : sections) {
-				std::vector<std::string> conditions;
+				std::vector<std::vector<CompiledCondition>> orGroups;
 				std::vector<std::string> splitSection = string::split(section, "|");
 				if (string::icontains(section, "|")) {
 					boost::trim(splitSection[1]);
-					conditions = string::split(splitSection[1], ",");  //[Forms|EditorID,EditorID2]
-					_MESSAGE("\t\treading [%s] : %u conditions", splitSection[0].c_str(), conditions.size());
-				}
+					std::vector<std::string> orParts = string::split(splitSection[1], ",");
+					_MESSAGE("\t\treading [%s] : %u OR groups", splitSection[0].c_str(), orParts.size());
 
-				std::vector<CompiledCondition> processedConditions;
-				processedConditions.reserve(conditions.size());
-				for (auto& condition : conditions) {
-					push_filter(condition, processedConditions);
-				}
-
-				CSimpleIniA::TNamesDepend values;
-				ini.GetAllKeys(section, values);
-				values.sort(CSimpleIniA::Entry::LoadOrder());
-				if (splitSection[0] == "Items") {
-					if (!values.empty()) {
-						_MESSAGE("\t\t\t%u items found", values.size());
-						for (const auto& key : values) {
-							get_forms(path, key.pItem, processedConditions, splitSection[0]);
+					for (auto& orPart : orParts) {
+						std::vector<std::string> andParts = string::split(orPart, "&");
+						std::vector<CompiledCondition> andConditions;
+						andConditions.reserve(andParts.size());
+						for (auto& andPart : andParts) {
+							push_filter(andPart, andConditions);
 						}
+						orGroups.push_back(std::move(andConditions));
 					}
 				}
-				else if (splitSection[0] == "Equipment" || splitSection[0] == "Equippables") {
-					if (!values.empty()) {
-						_MESSAGE("\t\t\t%u equippables found", values.size());
-						for (const auto& key : values) {
-							get_forms(path, key.pItem, processedConditions, splitSection[0]);
-						}
-					}
-				}
-				else if (splitSection[0] == "Spells") {
-					if (!values.empty()) {
-						_MESSAGE("\t\t\t%u spells found", values.size());
-						for (const auto& key : values) {
-							get_forms(path, key.pItem, processedConditions, splitSection[0]);
-						}
-					}
-				}
-				else if (splitSection[0] == "Factions") {
-					if (!values.empty()) {
-						_MESSAGE("\t\t\t%u factions found", values.size());
-						for (const auto& key : values) {
-							get_forms(path, key.pItem, processedConditions, splitSection[0]);
-						}
-					}
-				}
-				else if (splitSection[0] == "Packages") {
-					if (!values.empty()) {
-						_MESSAGE("\t\t\t%u packages found", values.size());
-						for (const auto& key : values) {
-							get_forms(path, key.pItem, processedConditions, splitSection[0]);
-						}
-					}
-				}
-				else if (splitSection[0] == "Keywords")
+				else
 				{
-					if (!values.empty())
+					orGroups.emplace_back();
+				}
+
+				for (const auto& andConditions : orGroups) {
+					CSimpleIniA::TNamesDepend values;
+					ini.GetAllKeys(section, values);
+					values.sort(CSimpleIniA::Entry::LoadOrder());
+					if (splitSection[0] == "Items") {
+						if (!values.empty()) {
+							_MESSAGE("\t\t\t%u items found", values.size());
+							for (const auto& key : values) {
+								get_forms(path, key.pItem, andConditions, splitSection[0]);
+							}
+						}
+					}
+					else if (splitSection[0] == "Equipment" || splitSection[0] == "Equippables") {
+						if (!values.empty()) {
+							_MESSAGE("\t\t\t%u equippables found", values.size());
+							for (const auto& key : values) {
+								get_forms(path, key.pItem, andConditions, splitSection[0]);
+							}
+						}
+					}
+					else if (splitSection[0] == "Spells") {
+						if (!values.empty()) {
+							_MESSAGE("\t\t\t%u spells found", values.size());
+							for (const auto& key : values) {
+								get_forms(path, key.pItem, andConditions, splitSection[0]);
+							}
+						}
+					}
+					else if (splitSection[0] == "Factions") {
+						if (!values.empty()) {
+							_MESSAGE("\t\t\t%u factions found", values.size());
+							for (const auto& key : values) {
+								get_forms(path, key.pItem, andConditions, splitSection[0]);
+							}
+						}
+					}
+					else if (splitSection[0] == "Packages") {
+						if (!values.empty()) {
+							_MESSAGE("\t\t\t%u packages found", values.size());
+							for (const auto& key : values) {
+								get_forms(path, key.pItem, andConditions, splitSection[0]);
+							}
+						}
+					}
+					else if (splitSection[0] == "Keywords")
 					{
-						_MESSAGE("\t\t\t%u keywords found", values.size());
-						for (const auto& key : values)
+						if (!values.empty())
 						{
-							get_forms(path, key.pItem, processedConditions, splitSection[0]);
+							_MESSAGE("\t\t\t%u keywords found", values.size());
+							for (const auto& key : values)
+							{
+								get_forms(path, key.pItem, andConditions, splitSection[0]);
+							}
 						}
 					}
 				}
@@ -983,58 +1210,25 @@ namespace SpellFactionItemDistributor
 	}
 
 
-	void Manager::LoadCache() {
-		LoadFormsOnce();
-		std::string formLine;
-		std::ifstream idCache;
-		idCache.open("SFIDCache.txt");
-		while (std::getline(idCache, formLine)) {
-			std::stringstream stringStream;
-			stringStream << std::hex << formLine;
-			UInt32 formID;
-			stringStream >> formID;
-			cachedForms.emplace(formID);
-		}
-		idCache.close();
-	}
-
-	void Manager::AddToCache(TESObjectREFR* ref)
-	{
-		if (const auto it = cachedForms.find(ref->refID); it == cachedForms.end()) {
-			cachedForms.emplace(ref->refID);
-			std::string formString = std::to_string(ref->refID) + "\n";
-			std::fstream idCache;
-			idCache.open("SFIDCache.txt", std::ios_base::binary | std::ios_base::app);
-			idCache << std::hex << ref->refID;
-			idCache << '\n';
-			idCache.close();
-		}
-	}
-
 	std::vector<SFIDResult> Manager::GetSingleSwapData(TESObjectREFR* a_ref, TESForm* a_base, std::string formType)
 	{
 		auto& allFormsConditional = get_form_map(formType);
 
-		DistributeRecordData empty;
-		std::vector<SFIDResult> emptyResult;
-		if (const auto it = processedForms.find(a_ref->refID); it != processedForms.end()) {
-			return emptyResult;
-		}
 		std::vector<SFIDResult> sfidResult;
 		sfidResult = GetBaseAll(a_ref, a_base, allFormsConditional, formType);
 		return sfidResult;
 	}
 
-	std::vector<std::vector<SFIDResult>> Manager::GetAllSwapData(TESObjectREFR* a_ref, TESForm* a_base) {
+	std::vector<std::vector<SFIDResult>> Manager::GetAllSwapData(TESObjectREFR* a_ref, TESForm* a_base, bool a_skipItemsAndEquipment) {
 		std::vector<std::vector<SFIDResult>> resultVec;
 		resultVec.reserve(5);
 		if (allFactionsConditional.size() > 0) {
 			resultVec.push_back(GetSingleSwapData(a_ref, a_base, "Factions"));
 		}
-		if (allItemsConditional.size() > 0) {
+		if (!a_skipItemsAndEquipment && allItemsConditional.size() > 0) {
 			resultVec.push_back(GetSingleSwapData(a_ref, a_base, "Items"));
 		}
-		if (allEquipmentConditional.size() > 0) {
+		if (!a_skipItemsAndEquipment && allEquipmentConditional.size() > 0) {
 			resultVec.push_back(GetSingleSwapData(a_ref, a_base, "Equipment"));
 		}
 		if (allSpellsConditional.size() > 0) {
@@ -1049,5 +1243,60 @@ namespace SpellFactionItemDistributor
 		}
 
 		return resultVec;
+	}
+
+	void Manager::QueueEquip(UInt32 refID, UInt32 formID)
+	{
+		pendingEquips.emplace(refID, formID);
+	}
+
+	void Manager::ProcessEquips(TESObjectREFR* a_ref)
+	{
+		if (!a_ref) return;
+		auto [begin, end] = pendingEquips.equal_range(a_ref->refID);
+		if (begin == end) return;
+
+		std::vector<UInt32> toEquip;
+		for (auto it = begin; it != end; ++it)
+			toEquip.push_back(it->second);
+		pendingEquips.erase(begin, end);
+
+		for (UInt32 formID : toEquip) {
+			if (auto* form = LookupFormByID(formID)) {
+				a_ref->Equip(form, 1, nullptr, 0);
+			}
+		}
+	}
+
+	void Manager::ProcessAllEquips()
+	{
+		if (pendingEquips.empty()) return;
+
+		auto snapshot = std::move(pendingEquips);
+		pendingEquips = {};
+
+		for (auto& [refID, formID] : snapshot) {
+			TESForm* refForm = LookupFormByID(refID);
+			TESObjectREFR* ref = refForm
+				? OBLIVION_CAST(refForm, TESForm, TESObjectREFR)
+				: nullptr;
+			if (!ref || !ref->GetNiNode()) {
+				pendingEquips.emplace(refID, formID);
+				continue;
+			}
+			// Engine bug: EquipItem on a creature duplicates its 3D nodes,
+			// causing random combat crashes. Items are already in inventory.
+			if (ref->baseForm) {
+				UInt32 ft = ref->baseForm->GetFormType();
+				if (ft == kFormType_Creature || ft == kFormType_LeveledCreature)
+					continue;
+			}
+			auto* form = LookupFormByID(formID);
+			if (form) {
+				ref->Equip(form, 1, nullptr, 0);
+				ref->UpdateNiNode();
+				ref->Update3D();
+			}
+		}
 	}
 }

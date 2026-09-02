@@ -145,9 +145,13 @@ namespace SpellFactionItemDistributor
 			};
 
 		const auto formPair = string::split(a_str, "|");
+		if (formPair.size() < 2) {
+			_ERROR("\t\t\tMalformed entry (missing '|' delimiter): %s", a_str.c_str());
+			return;
+		}
 		
 		if (formPair[0] == "ALL") {
-			UInt32 baseFormID;
+			UInt32 baseFormID = 0xFFFFFFFF;
 			if (const auto swapFormID = GetSwapFormID(formPair[1]); !swap_empty(swapFormID)) {
 
 				const Input input(
@@ -176,6 +180,10 @@ namespace SpellFactionItemDistributor
 			};
 
 		const auto formPair = string::split(a_str, "|");
+		if (formPair.size() < 2) {
+			_ERROR("\t\t\tMalformed entry (missing '|' delimiter): %s", a_str.c_str());
+			return;
+		}
 
 		if (const auto baseFormID = GetFormID(formPair[0]); baseFormID != 0) {
 			if (const auto swapFormID = GetSwapFormID(formPair[1]); !swap_empty(swapFormID)) {

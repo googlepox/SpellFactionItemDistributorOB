@@ -60,7 +60,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..;$(SolutionDir)..\xobse\obse\obse_common;$(SolutionDir)..\xobse\obse\obse;$(SolutionDir)..\xobse;$(SolutionDir)..\xobse\obse;$(SolutionDir)..\xobse\common;C:\Users\brand\Desktop\GameDev\OB\xOBSE\boost_1_86_0;C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..;$(SolutionDir)..\xobse\obse\obse_common;$(SolutionDir)..\xobse\obse\obse;$(SolutionDir)..\xobse;$(SolutionDir)..\obse;$(SolutionDir)..\obse\obse;$(SolutionDir)..\xobse\obse;$(SolutionDir)..\xobse\common;$(SolutionDir)\..\boost_1_92_0;C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;OBLIVION_VERSION=0x010201A0;OBLIVION;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>false</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -68,7 +68,9 @@
       <PrecompiledHeader />
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
-      <ForcedIncludeFiles>obse_common/obse_prefix.h;StdAfx.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <ForcedIncludeFiles>StdAfx.h;obse_common/obse_prefix.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <ConformanceMode>true</ConformanceMode>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
@@ -86,13 +88,15 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..;$(SolutionDir)..\xobse\obse\obse_common;$(SolutionDir)..\xobse\obse\obse;$(SolutionDir)..\xobse;$(SolutionDir)..\xobse\obse;$(SolutionDir)..\xobse\common;C:\Users\brand\Desktop\GameDev\OB\xOBSE\boost_1_86_0;C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..;$(SolutionDir)..\xobse\obse\obse_common;$(SolutionDir)..\xobse\obse\obse;$(SolutionDir)..\xobse;$(SolutionDir)..\xobse\obse;$(SolutionDir)..\xobse\common;$(SolutionDir)..\xobse\boost_1_86_0;C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;OBLIVION_VERSION=0x010201A0;OBLIVION;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PrecompiledHeader />
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <ForcedIncludeFiles>obse_common/obse_prefix.h;StdAfx.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <ForcedIncludeFiles>StdAfx.h;obse_common/obse_prefix.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <ConformanceMode>true</ConformanceMode>
+      <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
@@ -111,7 +115,12 @@
       <CopyLocalSatelliteAssemblies>true</CopyLocalSatelliteAssemblies>
       <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
     </ProjectReference>
-    <ProjectReference Include="..\xOBSE\obse\obse\obse.vcxproj">
+    <!-- obse.dll は __declspec(dllexport) を持たないため import library が生成されず、リンクできない -->
+    <!-- プラグインは obse.lib を必要としないので参照を外す -->
+    <!-- <ProjectReference Include="..\xOBSE\obse\obse\obse.vcxproj">
+      <Project>{01b76b21-f851-436e-acea-64fa03be8c59}</Project>
+    </ProjectReference> -->
+    <ProjectReference Include="..\obse\obse\obse.vcxproj">
       <Project>{01b76b21-f851-436e-acea-64fa03be8c59}</Project>
     </ProjectReference>
   </ItemGroup>

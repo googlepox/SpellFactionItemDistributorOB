@@ -15,6 +15,19 @@ namespace SpellFactionItemDistributor
 		keyword
 	};
 
+	enum SectionType : uint8_t {
+		kItems      = 1 << 0,
+		kEquipment  = 1 << 1,
+		kSpells     = 1 << 2,
+		kFactions   = 1 << 3,
+		kPackages   = 1 << 4,
+		kKeywords   = 1 << 5,
+	};
+	static constexpr uint8_t kAllSections = 0x3F;
+
+	static constexpr UInt32 kActorVal_BaseLevel = static_cast<UInt32>(-1);
+	static constexpr UInt32 kActorVal_ActualLevel = static_cast<UInt32>(-2);
+
 	enum class ConditionType
 	{
 		EditorID,
@@ -28,7 +41,20 @@ namespace SpellFactionItemDistributor
 		Worldspace,
 		Region,
 		Keyword,
+		ActorType,
+		Trait,
+		Stats,
 		All
+	};
+
+	enum class CompareOp : uint8_t
+	{
+		GE,
+		LE,
+		GT,
+		LT,
+		EQ,
+		NE
 	};
 
 	struct CompiledCondition
@@ -37,6 +63,8 @@ namespace SpellFactionItemDistributor
 		UInt32 formID;
 		std::string text;
 		bool isExclusion;
+		CompareOp compareOp{ CompareOp::GE };
+		float threshold{ 0.0f };
 	};
 
 	struct ConditionalEntry
@@ -51,7 +79,9 @@ namespace SpellFactionItemDistributor
 		return lhs.type == rhs.type &&
 			lhs.formID == rhs.formID &&
 			lhs.text == rhs.text &&
-			lhs.isExclusion == rhs.isExclusion;
+			lhs.isExclusion == rhs.isExclusion &&
+			lhs.compareOp == rhs.compareOp &&
+			lhs.threshold == rhs.threshold;
 	}
 
 	using ConditionalEntryVec = std::vector<ConditionalEntry>;
@@ -98,7 +128,7 @@ namespace SpellFactionItemDistributor
 
 		void            PrintConflicts() const;
 		std::vector<SFIDResult>      GetSingleSwapData(TESObjectREFR* a_ref, TESForm* a_base, std::string formType);
-		std::vector<std::vector<SFIDResult>> GetAllSwapData(TESObjectREFR* a_ref, TESForm* a_base);
+		std::vector<std::vector<SFIDResult>> GetAllSwapData(TESObjectREFR* a_ref, TESForm* a_base, bool a_skipItemsAndEquipment = false);
 		SFIDResult GetConditionalBase(
 			TESObjectREFR* a_ref,
 			TESForm* a_base,
@@ -111,11 +141,15 @@ namespace SpellFactionItemDistributor
 			const ConditionalFormMap& conditionalForms,
 			const std::string& formType);
 
-		void LoadCache();
-		short loadCounter;
-		void AddToCache(TESObjectREFR* ref);
 		std::unordered_set<UInt32> processedForms;
-		std::unordered_set<UInt32> cachedForms;
+		std::unordered_map<UInt32, uint8_t> processedSections;
+		std::unordered_set<uint64_t> swappedLeveledItemRefs{};
+		uint64_t savedConfigCRC{ 0 };
+
+		void QueueEquip(UInt32 refID, UInt32 formID);
+		void ProcessEquips(TESObjectREFR* a_ref);
+		void ProcessAllEquips();
+		void ClearPendingEquips() { pendingEquips.clear(); }
 
 	private:
 		Manager() = default;
@@ -174,9 +208,14 @@ namespace SpellFactionItemDistributor
 		ConditionalFormMap applyToAllKeywords{};
 
 
-		std::unordered_set<std::uint32_t> swappedLeveledItemRefs{};
+		std::unordered_multimap<UInt32, UInt32> pendingEquips;
 
 		bool hasConflicts{ false };
-		std::once_flag init{};
+		std::atomic<bool> formsLoaded{ false };
+
+	public:
+		void ResetInit() { formsLoaded.store(false, std::memory_order_release); }
+
+	private:
 	};
 }
