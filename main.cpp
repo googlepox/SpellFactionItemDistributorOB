@@ -240,7 +240,7 @@ bool OBSEPlugin_Load(OBSEInterface* OBSE)
 	g_messagingInterface = static_cast<OBSEMessagingInterface*>(OBSE->QueryInterface(kInterface_Messaging));
 	g_messagingInterface->RegisterListener(g_pluginHandle, "OBSE", MessageHandler);
 
-	OBSE->SetOpcodeBase(0x2770);
+	OBSE->SetOpcodeBase(0x2790);
 
 	if (!OBSE->isEditor)
 	{
