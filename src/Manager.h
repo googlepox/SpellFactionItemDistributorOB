@@ -73,17 +73,6 @@ namespace SpellFactionItemDistributor
 		std::vector<DistributeRecordData> swapData;
 	};
 
-	bool operator==(const CompiledCondition& lhs,
-		const CompiledCondition& rhs)
-	{
-		return lhs.type == rhs.type &&
-			lhs.formID == rhs.formID &&
-			lhs.text == rhs.text &&
-			lhs.isExclusion == rhs.isExclusion &&
-			lhs.compareOp == rhs.compareOp &&
-			lhs.threshold == rhs.threshold;
-	}
-
 	using ConditionalEntryVec = std::vector<ConditionalEntry>;
 	using ConditionalFormMap = std::unordered_map<UInt32, ConditionalEntryVec>;
 

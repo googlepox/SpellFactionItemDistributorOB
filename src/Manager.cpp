@@ -9,6 +9,17 @@ extern OBSEScriptInterface* g_script;
 
 namespace SpellFactionItemDistributor
 {
+	bool operator==(const CompiledCondition& lhs,
+		const CompiledCondition& rhs)
+	{
+		return lhs.type == rhs.type &&
+			lhs.formID == rhs.formID &&
+			lhs.text == rhs.text &&
+			lhs.isExclusion == rhs.isExclusion &&
+			lhs.compareOp == rhs.compareOp &&
+			lhs.threshold == rhs.threshold;
+	}
+
 	FormCode GetFormCodeFromString(std::string formString) {
 		if (formString == "Forms") return form;
 		if (formString == "Spells") return spell;

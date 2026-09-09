@@ -6,6 +6,60 @@
     <ClCompile Include="src\Hooks.cpp" />
     <ClCompile Include="src\Manager.cpp" />
     <ClCompile Include="src\DistributeData.cpp" />
+    <ClCompile Include="..\obse\obse\GameActorValues.cpp">
+      <Filter>obse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\obse\obse\GameAPI.cpp">
+      <Filter>obse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\obse\obse\GameBSExtraData.cpp">
+      <Filter>obse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\obse\obse\GameData.cpp">
+      <Filter>obse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\obse\obse\GameExtraData.cpp">
+      <Filter>obse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\obse\obse\GameForms.cpp">
+      <Filter>obse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\obse\obse\GameObjects.cpp">
+      <Filter>obse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\obse\obse\GameProcess.cpp">
+      <Filter>obse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\obse\obse\GameTasks.cpp">
+      <Filter>obse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\obse\obse\NiAPI.cpp">
+      <Filter>obse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\obse\obse\NiNodes.cpp">
+      <Filter>obse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\obse\obse\NiObjects.cpp">
+      <Filter>obse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\obse\obse\NiTypes.cpp">
+      <Filter>obse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\obse\obse\Utilities.cpp">
+      <Filter>obse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\obse\obse_common\SafeWrite.cpp">
+      <Filter>obse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\obse\obse\GameMagicEffects.cpp">
+      <Filter>obse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\obse\obse\Script.cpp">
+      <Filter>obse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\obse\obse\GameTypes.cpp">
+      <Filter>obse</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="lib\detail\SimpleIni.h">
@@ -56,6 +110,60 @@
     <ClInclude Include="..\OBSEKeywords\KeywordAPI.h">
       <Filter>include</Filter>
     </ClInclude>
+    <ClInclude Include="..\obse\obse\GameActorValues.h">
+      <Filter>obse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\obse\obse\GameAPI.h">
+      <Filter>obse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\obse\obse\GameBSExtraData.h">
+      <Filter>obse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\obse\obse\GameData.h">
+      <Filter>obse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\obse\obse\GameExtraData.h">
+      <Filter>obse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\obse\obse\GameForms.h">
+      <Filter>obse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\obse\obse\GameObjects.h">
+      <Filter>obse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\obse\obse\GameProcess.h">
+      <Filter>obse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\obse\obse\GameTasks.h">
+      <Filter>obse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\obse\obse\NiAPI.h">
+      <Filter>obse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\obse\obse\NiNodes.h">
+      <Filter>obse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\obse\obse\NiObjects.h">
+      <Filter>obse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\obse\obse\NiTypes.h">
+      <Filter>obse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\obse\obse\Utilities.h">
+      <Filter>obse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\obse\obse_common\SafeWrite.h">
+      <Filter>obse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\obse\obse\GameMagicEffects.h">
+      <Filter>obse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\obse\obse\Script.h">
+      <Filter>obse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\obse\obse\GameTypes.h">
+      <Filter>obse</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def" />
@@ -72,6 +180,9 @@
     </Filter>
     <Filter Include="include">
       <UniqueIdentifier>{7def82b5-cd60-4eb4-86ff-f69b1ce4ab0b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="obse">
+      <UniqueIdentifier>{bd4c7a71-aff6-4d7e-ac31-7a5ebe7e7394}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
